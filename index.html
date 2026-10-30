@@ -18,8 +18,21 @@
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
         }
-        /* 달력에서 가로 스와이프는 월 이동, 세로 스크롤은 브라우저 기본 동작 */
+        /* 달력에서 가로 스와이프는 월 이동 */
         #calendar-days { touch-action: pan-y; }
+
+        /* 모바일 화면 안에 달력을 고정하고 페이지 자체 스크롤 방지 */
+        @media (max-width: 640px) {
+            html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; }
+            body { min-height: 0 !important; padding-bottom: 0 !important; justify-content: flex-start !important; }
+            body > header { flex: 0 0 auto; padding-top: 10px; padding-bottom: 10px; }
+            body > main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding-bottom: 8px; }
+            body > main > .calendar-grid:first-child { flex: 0 0 34px; align-items: center; font-size: 16px; margin-bottom: 6px; }
+            #calendar-days { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); gap: 5px; padding: 10px; overflow: hidden; }
+            #calendar-days > div { min-height: 0 !important; padding: 4px; }
+            body > header button { font-size: 12px; }
+            #current-month-title { font-size: 17px; }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-10">
@@ -90,10 +103,6 @@
         <div id="calendar-days" class="calendar-grid gap-1 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
         </div>
     </main>
-
-    <footer class="w-full max-w-2xl mx-auto px-4 mt-6 text-center text-xs text-gray-400">
-        ✨ 근무 달력 (휴무 규칙·일정은 Firebase에서 관리)
-    </footer>
 
     <div id="alert-box" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-4 py-2 rounded-xl shadow-lg hidden z-50 transition"></div>
 
