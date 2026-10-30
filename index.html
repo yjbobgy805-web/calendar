@@ -1056,8 +1056,8 @@
             card.className = "bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3";
             let yoonLeaveStr = yoonLeaves.length > 0 ? `${yoonLeaves.length}일 (${yoonLeaves.join(', ')})` : '0일';
             let leeLeaveStr = leeLeaves.length > 0 ? `${leeLeaves.length}일 (${leeLeaves.join(', ')})` : '0일';
-            let yoonOffStr = yoonOffs.length > 0 ? `${yoonOffs.length}일 (${yoonOffs.join(', ')})` : '0일';
-            let leeOffStr = leeOffs.length > 0 ? `${leeOffs.length}일 (${leeOffs.join(', ')})` : '0일';
+            let yoonRStr = yoonRs.length > 0 ? `${yoonRs.length}일 (${yoonRs.join(', ')})` : '0일';
+            let leeRStr = leeRs.length > 0 ? `${leeRs.length}일 (${leeRs.join(', ')})` : '0일';
 
             let yoonExtraHtml = isYearly ? `
                 <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50">
@@ -1065,7 +1065,7 @@
                 </div>
             ` : `
                 <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50 space-y-1">
-                    <div><span class="font-semibold text-rose-600">off:</span> ${yoonOffStr}</div>
+                    <div><span class="font-semibold text-emerald-600">R:</span> ${yoonRStr}</div>
                     <div><span class="font-semibold text-purple-700">연차:</span> ${yoonLeaveStr}</div>
                 </div>
             `;
@@ -1076,7 +1076,7 @@
                 </div>
             ` : `
                 <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50 space-y-1">
-                    <div><span class="font-semibold text-rose-600">off:</span> ${leeOffStr}</div>
+                    <div><span class="font-semibold text-emerald-600">R:</span> ${leeRStr}</div>
                     <div><span class="font-semibold text-purple-700">연차:</span> ${leeLeaveStr}</div>
                 </div>
             `;
