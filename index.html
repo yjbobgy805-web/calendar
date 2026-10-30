@@ -18,6 +18,8 @@
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
         }
+        /* 달력에서 가로 스와이프는 월 이동, 세로 스크롤은 브라우저 기본 동작 */
+        #calendar-days { touch-action: pan-y; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-10">
@@ -62,11 +64,11 @@
             <button onclick="manualCloudSave()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
                 ☁️ 저장
             </button>
-            <button onclick="openRulesModal()" class="bg-violet-100 hover:bg-violet-200 text-violet-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
-                ⚙️ 휴무 규칙
-            </button>
             <button onclick="openStatsModal()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
                 📊 통계
+            </button>
+            <button onclick="openRulesModal()" class="bg-violet-100 hover:bg-violet-200 text-violet-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
+                ⚙️ 휴무 규칙
             </button>
             <button onclick="handleLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
                 🚪 로그아웃
@@ -90,7 +92,7 @@
     </main>
 
     <footer class="w-full max-w-2xl mx-auto px-4 mt-6 text-center text-xs text-gray-400">
-        ✨ 근무 달력 (휴무 규칙·일정은 Firebase에서 관리)
+        ✨ 근무 달력 
     </footer>
 
     <div id="alert-box" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-4 py-2 rounded-xl shadow-lg hidden z-50 transition"></div>
@@ -1012,6 +1014,40 @@
             alertBox.classList.remove('hidden');
             setTimeout(() => alertBox.classList.add('hidden'), 2500);
         }
+
+
+        // 휴대폰 달력 좌우 스와이프: 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달
+        (function enableCalendarSwipe() {
+            const calendar = document.getElementById('calendar-days');
+            if (!calendar) return;
+            let startX = 0;
+            let startY = 0;
+            let tracking = false;
+            calendar.addEventListener('touchstart', function (event) {
+                if (event.touches.length !== 1) { tracking = false; return; }
+                const target = event.target;
+                if (target.closest('button, input, select, textarea, a')) { tracking = false; return; }
+                startX = event.touches[0].clientX;
+                startY = event.touches[0].clientY;
+                tracking = true;
+            }, { passive: true });
+            calendar.addEventListener('touchend', function (event) {
+                if (!tracking || !event.changedTouches.length) return;
+                tracking = false;
+                // 열린 모달 안에서의 터치로는 달을 넘기지 않습니다.
+                const modalOpen = ['edit-modal', 'rules-modal', 'stats-modal'].some(id => {
+                    const el = document.getElementById(id);
+                    return el && !el.classList.contains('hidden');
+                });
+                if (modalOpen) return;
+                const dx = event.changedTouches[0].clientX - startX;
+                const dy = event.changedTouches[0].clientY - startY;
+                if (Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+                    window.changeMonth(dx < 0 ? 1 : -1);
+                }
+            }, { passive: true });
+            calendar.addEventListener('touchcancel', function () { tracking = false; }, { passive: true });
+        })();
     </script>
 </body>
 </html>
