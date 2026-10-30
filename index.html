@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>근무일정 달력</title>
+    <title>2027년 근무일정 달력 (클라우드 연동)</title>
     <!-- Tailwind CSS 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 구글 폰트 (Pretendard) -->
@@ -22,58 +22,27 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-10">
 
-    <!-- 로그인 오버레이 (인증 전에는 달력을 가리고 로그인 창을 띄움) -->
-    <div id="auth-overlay" class="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-50 flex items-center justify-center px-4">
-        <div class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl border border-gray-100">
-            <div class="text-center mb-6">
-                <span class="text-3xl">🔒</span>
-                <h2 class="text-xl font-bold text-gray-900 mt-2">로그인</h2>
-                <p class="text-xs text-gray-500 mt-1">등록된 계정으로 로그인해주세요.</p>
-            </div>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">이메일 주소</label>
-                    <input type="email" id="auth-email" placeholder="example@email.com" class="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">비밀번호</label>
-                    <input type="password" id="auth-password" placeholder="••••••••" class="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800">
-                </div>
-                <button id="login-submit-btn" onclick="handleLogin()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition text-sm">
-                    로그인하기
-                </button>
-            </div>
-            <div id="auth-error-msg" class="text-xs text-red-500 text-center mt-4 hidden font-medium"></div>
-        </div>
-    </div>
-
     <!-- 상단 헤더 -->
-    <header class="w-full max-w-2xl mx-auto px-4 py-4 flex flex-row justify-between items-center gap-1 sm:gap-2 flex-nowrap overflow-x-auto">
-        <div class="flex items-center space-x-1 sm:space-x-2 shrink-0">
-            <!-- 월 이동 화살표를 날짜 양 옆에 배치 -->
-            <button onclick="changeMonth(-1)" class="p-1.5 sm:p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 text-gray-600 transition">◀</button>
-            <span class="text-sm sm:text-xl font-bold text-gray-800 whitespace-nowrap" id="current-month-title">2027. 01.</span>
-            <button onclick="changeMonth(1)" class="p-1.5 sm:p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 text-gray-600 transition">▶</button>
+    <header class="w-full max-w-2xl mx-auto px-4 py-6 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl font-bold text-gray-800" id="current-month-title">2027. 01.</span>
+            <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">☁️ 연동중...</span>
         </div>
-        <div class="flex items-center justify-end gap-1 shrink-0">
-            <!-- 동기화 상태 표시 -->
-            <span id="sync-status" class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">인증 대기중</span>
-            <!-- 연도/월 통합 선택기 -->
-            <select id="year-month-select" onchange="jumpToYearMonth()" class="bg-white border border-gray-200 text-gray-700 text-[11px] sm:text-xs font-semibold px-2 sm:px-3 py-1.5 rounded-xl shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                <!-- 동적으로 생성 -->
-            </select>
+        <div class="flex items-center space-x-1 sm:space-x-2">
+            <!-- 월 이동 버튼 -->
+            <button onclick="changeMonth(-1)" class="p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 text-gray-600 transition">◀</button>
+            <button onclick="changeMonth(1)" class="p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 text-gray-600 transition">▶</button>
             <!-- 클라우드에 저장하기 버튼 -->
-            <button onclick="manualCloudSave()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
-                ☁️ 저장
+            <button onclick="manualCloudSave()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-2.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition">
+                ☁️ 클라우드 저장
             </button>
-            <!-- 통합 통계 버튼 -->
-            <button onclick="openStatsModal()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
-                📊 통계
+            <!-- 월간 통계 버튼 -->
+            <button onclick="openStatsModal()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition">
+                📊 월간통계
             </button>
-            <!-- 로그아웃 버튼 -->
-            <button onclick="handleLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
-                🚪 로그아웃
+            <!-- 1년 통계 버튼 -->
+            <button onclick="openYearStatsModal()" class="bg-orange-100 hover:bg-orange-200 text-orange-800 px-2.5 py-1.5 rounded-full text-xs font-semibold shadow-sm transition">
+                📅 1년통계
             </button>
         </div>
     </header>
@@ -99,7 +68,7 @@
 
     <!-- 하단 푸터 데코레이션 -->
     <footer class="w-full max-w-2xl mx-auto px-4 mt-6 text-center text-xs text-gray-400">
-        ✨ 근무 달력 (Firebase Authentication 보안 적용)
+        ✨ 2027년 스마트 근무 달력 (클라우드 실시간 동기화 적용)
     </footer>
 
     <!-- 알림 메시지 박스 -->
@@ -140,18 +109,11 @@
     <div id="stats-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center z-50 px-4">
         <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl border border-gray-100">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-800">근무 통계</h3>
+                <h3 id="stats-title" class="text-lg font-bold text-gray-800">월별 근무 통계</h3>
                 <button onclick="closeStatsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
             </div>
-            
-            <!-- 탭 전환 버튼 -->
-            <div class="flex bg-gray-100 p-1 rounded-xl mb-4">
-                <button id="tab-monthly-btn" onclick="switchStatsTab('monthly')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-sm transition">월별 통계</button>
-                <button id="tab-yearly-btn" onclick="switchStatsTab('yearly')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-gray-800 transition">1년 통계</button>
-            </div>
-
-            <div id="stats-content" class="space-y-4 max-h-80 overflow-y-auto pr-1">
-                <!-- 통합된 통계 내용 -->
+            <div id="stats-content" class="space-y-4 max-h-96 overflow-y-auto pr-1">
+                <!-- 동적 통계 내용 -->
             </div>
             <div class="mt-6 text-right">
                 <button onclick="closeStatsModal()" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition">닫기</button>
@@ -159,10 +121,25 @@
         </div>
     </div>
 
-    <!-- Firebase SDK 및 인증 로직 스크립트 -->
+    <!-- 1년 통계 모달 -->
+    <div id="year-stats-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center z-50 px-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl border border-gray-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="year-stats-title" class="text-lg font-bold text-gray-800">1년 전체 근무 통계</h3>
+                <button onclick="closeYearStatsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+            </div>
+            <div id="year-stats-content" class="space-y-4 max-h-96 overflow-y-auto pr-1">
+                <!-- 동적 1년 통계 내용 -->
+            </div>
+            <div class="mt-6 text-right">
+                <button onclick="closeYearStatsModal()" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK 로드 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -174,75 +151,20 @@
             appId: "1:726651967933:web:d481f8325a2242ea535ad4"
         };
 
-        let app, auth, db = null;
-        const appId = "calendar-bba90-work-calendar";
+        let db = null;
+        const appId = "calendar-bba90-work-calendar-v3";
 
         try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
+            const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             console.log("Firebase initialized successfully");
-
-            // 브라우저 탭/창을 닫으면 로그인 상태가 풀리도록 세션 유지 방식 설정
-            setPersistence(auth, browserSessionPersistence)
-                .catch((error) => {
-                    console.warn("Persistence error:", error);
-                });
-
-            // 로그인 상태 변화 감지
-            onAuthStateChanged(auth, (user) => {
-                const overlay = document.getElementById('auth-overlay');
-                if (user) {
-                    overlay.classList.add('hidden');
-                    loadCloudSchedules();
-                } else {
-                    overlay.classList.remove('hidden');
-                    document.getElementById('sync-status').innerText = '🔒 인증 필요';
-                }
-            });
+            loadCloudSchedules();
         } catch (err) {
             console.warn("Firebase init error:", err);
             document.getElementById('sync-status').innerText = '📁 로컬 모드';
-            document.getElementById('auth-overlay').classList.add('hidden');
+            document.getElementById('sync-status').className = 'text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium';
             loadLocalSchedules();
         }
-
-        // 전역 로그인 함수 연결
-        window.handleLogin = async function() {
-            const email = document.getElementById('auth-email').value.trim();
-            const password = document.getElementById('auth-password').value.trim();
-            const errorMsg = document.getElementById('auth-error-msg');
-
-            if (!email || !password) {
-                errorMsg.innerText = "이메일과 비밀번호를 모두 입력해주세요.";
-                errorMsg.classList.remove('hidden');
-                return;
-            }
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                errorMsg.classList.add('hidden');
-                showAlert("로그인 성공!");
-            } catch (error) {
-                console.error("Login error:", error);
-                errorMsg.innerText = "로그인 실패: 이메일이나 비밀번호를 다시 확인해주세요.";
-                errorMsg.classList.remove('hidden');
-            }
-        };
-
-        // 전역 로그아웃 함수 연결
-        window.handleLogout = async function() {
-            if (auth) {
-                try {
-                    await signOut(auth);
-                    showAlert("로그아웃 되었습니다.");
-                } catch (e) {
-                    console.error("Logout error", e);
-                }
-            } else {
-                document.getElementById('auth-overlay').classList.remove('hidden');
-            }
-        };
 
         async function loadCloudSchedules() {
             if (!db) return;
@@ -253,25 +175,28 @@
                     const data = docSnap.data();
                     if (data && data.schedules) {
                         window.customSchedules = data.schedules;
+                        localStorage.setItem('work_calendar_schedules_2027', JSON.stringify(data.schedules));
                     }
+                } else {
+                    // 최초 실행 시 클라우드에 기본 규칙(루프 데이터) 저장 초기화
+                    await initDefaultCloudRules(docRef);
                 }
-                const syncElem = document.getElementById('sync-status');
-                if (syncElem) {
-                    syncElem.innerText = '☁️ 클라우드 동기화됨';
-                    syncElem.className = 'text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium';
-                }
+                document.getElementById('sync-status').innerText = '☁️ 클라우드 동기화됨';
+                document.getElementById('sync-status').className = 'text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium';
                 if (typeof window.renderCalendar === 'function') {
                     window.renderCalendar();
                 }
             } catch (err) {
                 console.warn("Firestore sync error:", err);
-                const syncElem = document.getElementById('sync-status');
-                if (syncElem) {
-                    syncElem.innerText = '☁️ 클라우드 동기화됨';
-                    syncElem.className = 'text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium';
-                }
+                document.getElementById('sync-status').innerText = '📁 로컬 모드';
+                document.getElementById('sync-status').className = 'text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium';
                 loadLocalSchedules();
             }
+        }
+
+        async function initDefaultCloudRules(docRef) {
+            window.customSchedules = window.customSchedules || {};
+            await setDoc(docRef, { schedules: window.customSchedules }, { merge: true });
         }
 
         function loadLocalSchedules() {
@@ -298,29 +223,27 @@
                 try {
                     const docRef = doc(db, "artifacts_data", appId);
                     await setDoc(docRef, { schedules: newSchedules }, { merge: true });
-                    const syncElem = document.getElementById('sync-status');
-                    if (syncElem) {
-                        syncElem.innerText = '☁️ 저장 완료';
-                        syncElem.className = 'text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium';
-                        setTimeout(() => {
-                            syncElem.innerText = '☁️ 클라우드 동기화됨';
-                            syncElem.className = 'text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium';
-                        }, 2000);
-                    }
-                    showAlert("클라우드에 성공적으로 저장되었습니다!");
+                    document.getElementById('sync-status').innerText = '☁️ 클라우드 동기화됨';
+                    document.getElementById('sync-status').className = 'text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium';
+                    showAlert("클라우드에 안전하게 저장되었습니다!");
                 } catch (err) {
                     console.warn("Save error:", err);
-                    showAlert("저장되었습니다.");
+                    document.getElementById('sync-status').innerText = '📁 로컬 저장됨';
+                    document.getElementById('sync-status').className = 'text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium';
+                    showAlert("로컬에 저장되었습니다.");
                 }
             } else {
-                showAlert("저장되었습니다.");
+                showAlert("로컬에 저장되었습니다.");
             }
             if (typeof window.renderCalendar === 'function') {
                 window.renderCalendar();
             }
         };
 
-        window.manualCloudSave = function() {
+        window.manualCloudSave = async function() {
+            if (db) {
+                await loadCloudSchedules();
+            }
             window.saveScheduleToCloud(window.customSchedules || {});
         };
 
@@ -333,20 +256,57 @@
     <!-- 애플리케이션 로직 스크립트 -->
     <script>
         const holidaysAll = {
+            // 2026년 하반기 공휴일
             "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴",
             "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날",
-            "2026-12-25": "크리스마스",
+            "2026-12-25": "기독탄신일",
+
+            // 2027년 공휴일
             "2027-01-01": "신정",
             "2027-02-06": "설날 연휴", "2027-02-07": "설날", "2027-02-08": "설날 연휴", "2027-02-09": "대체공휴일",
             "2027-03-01": "삼일절",
-            "2027-05-01": "근로자의날", "2027-05-03": "대체공휴일", "2027-05-05": "어린이날", "2027-05-13": "부처님오신날",
-            "2027-06-06": "현충일", 
-            "2027-07-17": "제헌절", "2027-07-19": "대체공휴일",
+            "2027-05-05": "어린이날", "2027-05-13": "부처님오신날",
+            "2027-06-06": "현충일", "2027-06-07": "대체공휴일",
             "2027-08-15": "광복절", "2027-08-16": "대체공휴일",
             "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴",
-            "2027-10-03": "개천절", "2027-10-04": "대체공휴일",  
-            "2027-10-09": "한글날", "2027-10-11": "대체공휴일",
-            "2027-12-25": "크리스마스", "2027-12-27": "대체공휴일"
+            "2027-10-03": "개천절", "2027-10-04": "대체공휴일",
+            "2027-10-09": "한글날",
+            "2027-12-25": "기독탄신일",
+
+            // 2028년 공휴일
+            "2028-01-01": "신정", "2028-01-02": "대체공휴일",
+            "2028-01-25": "설날 연휴", "2028-01-26": "설날", "2028-01-27": "설날 연휴",
+            "2028-03-01": "삼일절",
+            "2028-05-02": "부처님오신날", "2028-05-05": "어린이날",
+            "2028-06-06": "현충일", "2028-06-14": "지방선거",
+            "2028-08-15": "광복절",
+            "2028-10-02": "추석 연휴", "2028-10-03": "개천절/추석", "2028-10-04": "추석 연휴", "2028-10-05": "대체공휴일",
+            "2028-10-09": "한글날",
+            "2028-12-25": "기독탄신일",
+
+            // 2029년 공휴일
+            "2029-01-01": "신정",
+            "2029-02-12": "설날 연휴", "2029-02-13": "설날", "2029-02-14": "설날 연휴", "2029-02-15": "대체공휴일",
+            "2029-03-01": "삼일절",
+            "2029-05-05": "어린이날", "2029-05-07": "대체공휴일", "2029-05-20": "부처님오신날", "2029-05-21": "대체공휴일",
+            "2029-06-06": "현충일",
+            "2029-08-15": "광복절",
+            "2029-09-21": "추석 연휴", "2029-09-22": "추석", "2029-09-23": "추석 연휴", "2029-09-24": "대체공휴일",
+            "2029-10-03": "개천절",
+            "2029-10-09": "한글날",
+            "2029-12-25": "기독탄신일",
+
+            // 2030년 공휴일
+            "2030-01-01": "신정",
+            "2030-02-01": "설날 연휴", "2030-02-02": "설날", "2030-02-03": "설날 연휴", "2030-02-04": "대체공휴일",
+            "2030-03-01": "삼일절",
+            "2030-05-05": "어린이날", "2030-05-06": "대체공휴일", "2030-05-09": "부처님오신날",
+            "2030-06-06": "현충일",
+            "2030-08-15": "광복절",
+            "2030-09-11": "추석 연휴", "2030-09-12": "추석", "2030-09-13": "추석 연휴",
+            "2030-10-03": "개천절",
+            "2030-10-09": "한글날",
+            "2030-12-25": "기독탄신일"
         };
 
         window.customSchedules = window.customSchedules || {};
@@ -355,60 +315,67 @@
         let currentYear = todayNow.getFullYear();
         let currentMonth = todayNow.getMonth();
         let selectedDateStr = null;
-        let currentStatsMode = 'monthly';
 
         window.initCalendarApp = function() {
-            initYearMonthDropdown();
             renderCalendar();
         };
 
-        function initYearMonthDropdown() {
-            const select = document.getElementById('year-month-select');
-            if (!select) return;
-            select.innerHTML = '';
-            for (let y = 2026; y <= 2030; y++) {
-                for (let m = 0; m < 12; m++) {
-                    const opt = document.createElement('option');
-                    opt.value = `${y}-${m}`;
-                    opt.innerText = `${y}년 ${m + 1}월`;
-                    select.appendChild(opt);
-                }
-            }
-        }
-
-        function getCustomMarch2027Rule(date) {
+        // 클라우드/기본 계산 로직 (코드에서는 규칙 문구가 노출되지 않고 날짜 연산에만 반영됨)
+        function getTuesdayHalfWorker(date) {
             const year = date.getFullYear();
             const month = date.getMonth();
-            const dayOfWeek = date.getDay();
+            const isTargetPeriod = (year > 2027) || (year === 2027 && month >= 2);
+            if (isTargetPeriod) {
+                const firstDayOfMonth = new Date(year, month, 1);
+                const firstDayOfWeek = firstDayOfMonth.getDay();
+                const dateNum = date.getDate();
+                const weekNumber = Math.floor((dateNum + firstDayOfWeek - 1) / 7) + 1;
+                const cycleWeek = ((weekNumber - 1) % 4) + 1;
 
-            const isTargetPeriod = (year > 2026) || (year === 2026 && month >= 10);
-            if (!isTargetPeriod) return null;
-
-            const baseDate = new Date(2026, 10, 2);
+                if (cycleWeek === 1 || cycleWeek === 3) {
+                    return '이';
+                } else {
+                    return '윤';
+                }
+            }
+            const baseDate = new Date(2027, 0, 5);
             const diffTime = date.getTime() - baseDate.getTime();
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             const diffWeeks = Math.floor(diffDays / 7);
-            const isFirstPatternOfWeek = (Math.abs(diffWeeks) % 2 === 0);
+            return (Math.abs(diffWeeks) % 2 === 0) ? '이' : '윤';
+        }
+
+        function getCustomFebruary2027Rule(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const dayOfWeek = date.getDay();
+            const isTargetPeriod = (year > 2027) || (year === 2027 && month >= 1);
+            if (!isTargetPeriod) return null;
+
+            const firstDayOfMonth = new Date(year, month, 1);
+            const firstDayOfWeek = firstDayOfMonth.getDay();
+            const dateNum = date.getDate();
+            const weekNumber = Math.floor((dateNum + firstDayOfWeek - 1) / 7) + 1;
+            const cycleWeek = ((weekNumber - 1) % 4) + 1;
 
             let yoonArr = [];
             let leeArr = [];
 
-            if (isFirstPatternOfWeek) {
-                if (dayOfWeek === 1) { leeArr.push('반차'); }
-                else if (dayOfWeek === 2) { yoonArr.push('반차'); }
-                else if (dayOfWeek === 3) { yoonArr.push('반차'); }
-                else if (dayOfWeek === 4) { leeArr.push('반차'); leeArr.push('off'); leeArr.push('R'); }
-                else if (dayOfWeek === 5) { yoonArr.push('반차'); }
-                else if (dayOfWeek === 6) { yoonArr.push('off'); yoonArr.push('R'); }
-            } else {
-                if (dayOfWeek === 1) { leeArr.push('반차'); }
-                else if (dayOfWeek === 2) { leeArr.push('반차'); }
-                else if (dayOfWeek === 3) { yoonArr.push('반차'); yoonArr.push('off'); yoonArr.push('R'); }
-                else if (dayOfWeek === 4) { leeArr.push('반차'); }
-                else if (dayOfWeek === 5) { yoonArr.push('반차'); }
+            if (cycleWeek === 1 || cycleWeek === 3) {
+                if (dayOfWeek === 1) leeArr.push('반차');
+                else if (dayOfWeek === 2) leeArr.push('반차');
+                else if (dayOfWeek === 3) { yoonArr.push('off'); yoonArr.push('R'); yoonArr.push('반차'); }
+                else if (dayOfWeek === 4) leeArr.push('반차');
+                else if (dayOfWeek === 5) yoonArr.push('반차');
+                else if (dayOfWeek === 6) { leeArr.push('off'); leeArr.push('R'); }
+            } else if (cycleWeek === 2 || cycleWeek === 4) {
+                if (dayOfWeek === 1) leeArr.push('반차');
+                else if (dayOfWeek === 2) yoonArr.push('반차');
+                else if (dayOfWeek === 3) yoonArr.push('반차');
+                else if (dayOfWeek === 4) { yoonArr.push('off'); yoonArr.push('R'); yoonArr.push('반차'); }
+                else if (dayOfWeek === 5) yoonArr.push('반차');
                 else if (dayOfWeek === 6) { yoonArr.push('off'); yoonArr.push('R'); }
             }
-
             return { '윤': yoonArr, '이': leeArr };
         }
 
@@ -429,19 +396,38 @@
                 return { '윤': [], '이': [], 'R': [], 'memo': '' };
             }
 
-            const customMarchRule = getCustomMarch2027Rule(date);
-            if (customMarchRule) {
-                return { '윤': customMarchRule['윤'], '이': customMarchRule['이'], 'R': [], 'memo': '' };
+            const customFebRule = getCustomFebruary2027Rule(date);
+            if (customFebRule) {
+                let yoonArr = [...customFebRule['윤']];
+                let leeArr = [...customFebRule['이']];
+                
+                if (date.getFullYear() === 2027 && date.getMonth() >= 2 && dayOfWeek === 2) {
+                    const tWorker = getTuesdayHalfWorker(date);
+                    if (tWorker === '윤') yoonArr.push('반차');
+                    else if (tWorker === '이') leeArr.push('반차');
+                }
+
+                return {
+                    '윤': yoonArr,
+                    '이': leeArr,
+                    'R': customFebRule['R'] || [],
+                    'memo': ''
+                };
             }
 
             let yoonArr = [];
             let leeArr = [];
+            let albaList = [];
 
             if (dayOfWeek === 3 || dayOfWeek === 5) yoonArr.push('반차');
             if (dayOfWeek === 1 || dayOfWeek === 4) leeArr.push('반차');
-            if (dayOfWeek === 2) leeArr.push('반차');
+            if (dayOfWeek === 2) {
+                const tuesdayHalf = getTuesdayHalfWorker(date);
+                if (tuesdayHalf === '윤') yoonArr.push('반차');
+                else if (tuesdayHalf === '이') leeArr.push('반차');
+            }
 
-            return { '윤': yoonArr, '이': leeArr, 'R': [], 'memo': '' };
+            return { '윤': yoonArr, '이': leeArr, 'R': albaList, 'memo': '' };
         }
 
         function createBadge(workerName, type, isAlbaCustom, albaName) {
@@ -460,12 +446,13 @@
                     else badge.classList.add('bg-pink-700', 'text-white');
                 } else if (workerName === '윤') {
                     if (type === '반차') badge.classList.add('bg-amber-100', 'text-amber-900');
-                    else {
-                        badge.style.backgroundColor = '#F79646';
-                        badge.style.color = '#ffffff';
-                    }
+                    else { badge.style.backgroundColor = '#F79646'; badge.style.color = '#ffffff'; }
+                } else {
+                    if (type === '반차') badge.classList.add('bg-emerald-100', 'text-emerald-900');
+                    else badge.classList.add('bg-pink-700', 'text-white');
                 }
             }
+
             badge.innerText = displayText;
             return badge;
         }
@@ -474,11 +461,6 @@
             const titleElem = document.getElementById('current-month-title');
             if (titleElem) {
                 titleElem.innerText = `${currentYear}. ${String(currentMonth + 1).padStart(2, '0')}.`;
-            }
-
-            const ymSelect = document.getElementById('year-month-select');
-            if (ymSelect) {
-                ymSelect.value = `${currentYear}-${currentMonth}`;
             }
 
             const container = document.getElementById('calendar-days');
@@ -490,7 +472,8 @@
             const prevTotalDays = new Date(currentYear, currentMonth, 0).getDate();
 
             for (let i = firstDayIndex - 1; i >= 0; i--) {
-                container.appendChild(createCell(prevTotalDays - i, true));
+                const dayNum = prevTotalDays - i;
+                container.appendChild(createCell(dayNum, true));
             }
 
             for (let d = 1; d <= totalDays; d++) {
@@ -525,40 +508,32 @@
             const dayOfWeek = dateObj.getDay();
 
             const now = new Date();
-            const isToday = (
-                dateObj.getFullYear() === now.getFullYear() &&
-                dateObj.getMonth() === now.getMonth() &&
-                dateObj.getDate() === now.getDate()
-            );
+            const isToday = (dateObj.getFullYear() === now.getFullYear() && dateObj.getMonth() === now.getMonth() && dateObj.getDate() === now.getDate());
 
             cell.classList.add('cursor-pointer', 'hover:bg-amber-50/30');
             cell.onclick = () => openEditModal(dateStr);
 
             const schedule = getDefaultSchedule(dateObj);
-            const isHoliday = holidaysAll[dateStr] !== undefined;
 
-            if (isToday) {
-                cell.classList.add('bg-gray-100', 'ring-2', 'ring-gray-300');
-            } else if (isHoliday) {
-                cell.classList.add('bg-rose-50/70');
-            } else {
-                cell.classList.add('bg-white');
-            }
+            let hasOffOrLeave = false;
+            ['윤', '이'].forEach(w => {
+                if (Array.isArray(schedule[w]) && schedule[w].some(t => t === 'off' || t === '연차')) hasOffOrLeave = true;
+            });
+            if (holidaysAll[dateStr]) hasOffOrLeave = true;
+
+            if (isToday) cell.classList.add('bg-gray-100', 'ring-2', 'ring-gray-300');
+            else if (hasOffOrLeave) cell.classList.add('bg-rose-50/70');
+            else cell.classList.add('bg-white');
 
             const topRow = document.createElement('div');
             topRow.className = "flex justify-between items-center text-[10px] sm:text-xs font-semibold";
 
             const dayNumSpan = document.createElement('span');
             dayNumSpan.innerText = dateObj.getDate();
-            if (isToday) {
-                dayNumSpan.className = "bg-gray-800 text-white px-1.5 py-0.5 rounded-md font-bold text-[10px]";
-            } else if (dayOfWeek === 0) {
-                dayNumSpan.className = "text-red-500";
-            } else if (dayOfWeek === 6) {
-                dayNumSpan.className = "text-blue-500";
-            } else {
-                dayNumSpan.className = "text-gray-700";
-            }
+            if (isToday) dayNumSpan.className = "bg-gray-800 text-white px-1.5 py-0.5 rounded-md font-bold text-[10px]";
+            else if (dayOfWeek === 0) dayNumSpan.className = "text-red-500";
+            else if (dayOfWeek === 6) dayNumSpan.className = "text-blue-500";
+            else dayNumSpan.className = "text-gray-700";
             topRow.appendChild(dayNumSpan);
 
             if (holidaysAll[dateStr]) {
@@ -575,7 +550,7 @@
             if (schedule['memo'] && schedule['memo'].trim() !== '') {
                 const memoDiv = document.createElement('div');
                 memoDiv.className = "text-[9px] text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded truncate font-medium mb-0.5";
-                memoDiv.innerText = ` ${schedule['memo']}`;
+                memoDiv.innerText = `📝 ${schedule['memo']}`;
                 contentWrapper.appendChild(memoDiv);
             }
 
@@ -589,12 +564,19 @@
                 schedule['R'].forEach(a => allBadges.push({ worker: a.name || '알바', type: '알바', isAlba: true, albaName: a.name || '알바' }));
             }
 
+            allBadges.sort((a, b) => {
+                if (a.isAlba && !b.isAlba) return 1;
+                if (!a.isAlba && b.isAlba) return -1;
+                if (a.type === '반차' && b.type !== '반차') return 1;
+                if (a.type !== '반차' && b.type === '반차') return -1;
+                return 0;
+            });
+
             allBadges.forEach(item => {
                 badgesContainer.appendChild(createBadge(item.worker, item.type, item.isAlba, item.albaName));
             });
             contentWrapper.appendChild(badgesContainer);
             cell.appendChild(contentWrapper);
-
             return cell;
         }
 
@@ -605,16 +587,6 @@
             renderCalendar();
         };
 
-        window.jumpToYearMonth = function() {
-            const ymSelect = document.getElementById('year-month-select');
-            if (ymSelect) {
-                const parts = ymSelect.value.split('-');
-                currentYear = parseInt(parts[0]);
-                currentMonth = parseInt(parts[1]);
-                renderCalendar();
-            }
-        };
-
         window.openEditModal = function(dateStr) {
             selectedDateStr = dateStr;
             const [y, m, d] = dateStr.split('-');
@@ -622,17 +594,16 @@
 
             const holidayInfo = document.getElementById('modal-holiday-info');
             if (holidaysAll[dateStr]) {
-                holidayInfo.innerText = `📌 공휴일(${holidaysAll[dateStr]})이므로 기본 근무가 자동으로 해제됩니다.`;
+                holidayInfo.innerText = `📌 공휴일(${holidaysAll[dateStr]})이므로 기본 반차 근무가 자동으로 해제됩니다.`;
                 holidayInfo.classList.remove('hidden');
             } else {
                 holidayInfo.classList.add('hidden');
             }
 
-            const dateObj = new Date(y, m - 1, d);
-            const sched = getDefaultSchedule(dateObj);
-
+            const sched = getDefaultSchedule(new Date(y, m - 1, d));
             const container = document.getElementById('modal-workers-container');
             container.innerHTML = '';
+
             container.appendChild(createWorkerEditRow('윤', sched['윤'] || []));
             container.appendChild(createWorkerEditRow('이', sched['이'] || []));
 
@@ -649,6 +620,7 @@
             row.className = "flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100 gap-2";
 
             const leftDiv = document.createElement('div');
+            leftDiv.className = "flex items-center gap-2";
             const nameSpan = document.createElement('span');
             nameSpan.className = "font-bold text-gray-800 text-sm w-12";
             nameSpan.innerText = name;
@@ -657,7 +629,6 @@
 
             const btnGroup = document.createElement('div');
             btnGroup.className = "worker-buttons-group flex flex-wrap gap-1.5";
-
             ['반차', 'off', '연차', 'R'].forEach(opt => {
                 const btn = document.createElement('button');
                 btn.type = "button";
@@ -667,7 +638,6 @@
                 btn.onclick = () => updateButtonStyle(btn, !btn.classList.contains('bg-gray-800'));
                 btnGroup.appendChild(btn);
             });
-
             row.appendChild(btnGroup);
             return row;
         }
@@ -675,15 +645,20 @@
         function createAlbaEditRow(albaNameVal) {
             const row = document.createElement('div');
             row.className = "flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100 gap-2 alba-row";
-
             const leftDiv = document.createElement('div');
             leftDiv.className = "flex items-center gap-2";
+
             const nameInput = document.createElement('input');
             nameInput.type = "text";
             nameInput.value = albaNameVal;
             nameInput.className = "alba-name-input px-2.5 py-1 text-xs font-bold text-gray-800 bg-white border border-gray-200 rounded-lg w-28 focus:outline-none focus:ring-1 focus:ring-indigo-500";
             nameInput.placeholder = "알바 이름";
             leftDiv.appendChild(nameInput);
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = "text-xs font-medium text-gray-500";
+            labelSpan.innerText = "알바";
+            leftDiv.appendChild(labelSpan);
             row.appendChild(leftDiv);
 
             const delBtn = document.createElement('button');
@@ -715,158 +690,88 @@
         window.saveModalChanges = function() {
             if (!selectedDateStr) return;
 
-            const rows = document.querySelectorAll('#modal-workers-container > div');
-            let yoonTypes = [], leeTypes = [], albaList = [];
+            const rows = document.querySelectorAll('#modal-workers-container > div.bg-gray-50');
+            let yoonTypes = [];
+            let leeTypes = [];
+            let albaList = [];
 
             rows.forEach(row => {
-                const nameElem = row.querySelector('.font-bold');
-                const albaInput = row.querySelector('.alba-name-input');
-                if (albaInput) {
-                    if (albaInput.value.trim() !== '') albaList.push({ name: albaInput.value.trim() });
-                } else if (nameElem) {
+                const workerNameElem = row.querySelector('.font-bold');
+                const albaInputElem = row.querySelector('.alba-name-input');
+                
+                if (albaInputElem) {
+                    const albaName = albaInputElem.value.trim();
+                    if (albaName !== '') albaList.push({ name: albaName });
+                } else if (workerNameElem) {
+                    const wName = workerNameElem.innerText;
                     const activeBtns = row.querySelectorAll('.worker-buttons-group button.bg-gray-800');
-                    let opts = [];
-                    activeBtns.forEach(b => opts.push(b.dataset.val));
-                    if (nameElem.innerText === '윤') yoonTypes = opts;
-                    if (nameElem.innerText === '이') leeTypes = opts;
+                    let selectedOpts = [];
+                    activeBtns.forEach(b => selectedOpts.push(b.dataset.val));
+                    if (wName === '윤') yoonTypes = selectedOpts;
+                    if (wName === '이') leeTypes = selectedOpts;
                 }
             });
 
+            const dailyMemo = document.getElementById('modal-daily-memo').value.trim();
             let newSchedules = { ...(window.customSchedules || {}) };
-            newSchedules[selectedDateStr] = {
-                '윤': yoonTypes,
-                '이': leeTypes,
-                'R': albaList,
-                'memo': document.getElementById('modal-daily-memo').value.trim()
-            };
+            newSchedules[selectedDateStr] = { '윤': yoonTypes, '이': leeTypes, 'R': albaList, 'memo': dailyMemo };
 
             closeModal();
             window.saveScheduleToCloud(newSchedules);
         };
 
         window.openStatsModal = function() {
-            currentStatsMode = 'monthly';
-            updateStatsTabUI();
-            renderStatsContent();
+            let stats = { '윤': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 }, '이': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 } };
+            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+            for (let d = 1; d <= totalDays; d++) {
+                let sched = (window.customSchedules && window.customSchedules[`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`]) || getDefaultSchedule(new Date(currentYear, currentMonth, d));
+                ['윤', '이'].forEach(w => {
+                    if (Array.isArray(sched[w])) sched[w].forEach(t => { if (stats[w][t] !== undefined) stats[w][t]++; });
+                });
+            }
+            const container = document.getElementById('stats-content');
+            container.innerHTML = '';
+            document.getElementById('stats-title').innerText = `${currentYear}년 ${currentMonth + 1}월 근무 통계`;
+            container.appendChild(createStatCard('근무자: 윤', stats['윤']));
+            container.appendChild(createStatCard('근무자: 이', stats['이']));
             document.getElementById('stats-modal').classList.remove('hidden');
         };
 
-        window.switchStatsTab = function(mode) {
-            currentStatsMode = mode;
-            updateStatsTabUI();
-            renderStatsContent();
-        };
-
-        function updateStatsTabUI() {
-            const mBtn = document.getElementById('tab-monthly-btn');
-            const yBtn = document.getElementById('tab-yearly-btn');
-            if (!mBtn || !yBtn) return;
-            if (currentStatsMode === 'monthly') {
-                mBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-sm transition";
-                yBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-gray-800 transition";
-            } else {
-                mBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-gray-800 transition";
-                yBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-sm transition";
-            }
-        }
-
-        function renderStatsContent() {
-            const container = document.getElementById('stats-content');
-            if (!container) return;
-            container.innerHTML = '';
-
-            let stats = { '윤': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 }, '이': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 } };
-            let yoonLeaves = [], leeLeaves = [], yoonRs = [], leeRs = [];
-
-            if (currentStatsMode === 'monthly') {
-                const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
-                for (let d = 1; d <= totalDays; d++) {
-                    let dateObj = new Date(currentYear, currentMonth, d);
-                    let dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    let sched = (window.customSchedules && window.customSchedules[dateKey]) || getDefaultSchedule(dateObj);
-
-                    ['윤', '이'].forEach(w => {
-                        if (Array.isArray(sched[w])) {
-                            sched[w].forEach(t => {
-                                if (stats[w][t] !== undefined) {
-                                    stats[w][t]++;
-                                    if (t === '연차') {
-                                        if (w === '윤') yoonLeaves.push(`${d}일`);
-                                        if (w === '이') leeLeaves.push(`${d}일`);
-                                    }
-                                }
-                            });
-                        }
-                        if (sched[w] && sched[w].includes('R')) {
-                            if (w === '윤') yoonRs.push(`${d}일`);
-                            if (w === '이') leeRs.push(`${d}일`);
-                        }
-                    });
-                }
-                container.appendChild(createCombinedStatCard(`${currentYear}년 ${currentMonth + 1}월 통계`, stats, yoonLeaves, leeLeaves, yoonRs, leeRs, false));
-            } else {
-                let curr = new Date(currentYear, 0, 1);
-                let endDate = new Date(currentYear, 11, 31);
-                while (curr <= endDate) {
-                    let dateKey = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
-                    let sched = (window.customSchedules && window.customSchedules[dateKey]) || getDefaultSchedule(curr);
-
-                    ['윤', '이'].forEach(w => {
-                        if (Array.isArray(sched[w])) {
-                            sched[w].forEach(t => {
-                                if (stats[w][t] !== undefined) {
-                                    stats[w][t]++;
-                                    if (t === '연차') {
-                                        if (w === '윤') yoonLeaves.push(`${curr.getMonth() + 1}.${curr.getDate()}`);
-                                        if (w === '이') leeLeaves.push(`${curr.getMonth() + 1}.${curr.getDate()}`);
-                                    }
-                                }
-                            });
-                        }
-                    });
-                    curr.setDate(curr.getDate() + 1);
-                }
-                container.appendChild(createCombinedStatCard(`${currentYear}년 전체 1년 통계`, stats, yoonLeaves, leeLeaves, [], [], true));
-            }
-        }
-
-        function createCombinedStatCard(title, stats, yoonLeaves, leeLeaves, yoonRs, leeRs, isYearly) {
+        function createStatCard(title, counts) {
             const card = document.createElement('div');
-            card.className = "bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3";
-            let yoonLeaveStr = yoonLeaves.length > 0 ? `${yoonLeaves.length}일 (${yoonLeaves.join(', ')})` : '0일';
-            let leeLeaveStr = leeLeaves.length > 0 ? `${leeLeaves.length}일 (${leeLeaves.join(', ')})` : '0일';
-
+            card.className = "bg-gray-50 p-4 rounded-2xl border border-gray-100";
             card.innerHTML = `
-                <h4 class="font-bold text-gray-800 text-sm mb-1">${title}</h4>
-                <div class="space-y-2">
-                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
-                        <div class="text-xs font-bold text-amber-700 mb-1">근무자: 윤</div>
-                        <div class="grid grid-cols-4 gap-2 text-center">
-                            <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['윤']['반차']}</div></div>
-                            <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['윤']['off']}</div></div>
-                            <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['윤']['연차']}</div></div>
-                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-emerald-600">${stats['윤']['R']}</div></div>
-                        </div>
-                        <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50"><span class="font-semibold text-purple-700">연차:</span> ${yoonLeaveStr}</div>
-                    </div>
-                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
-                        <div class="text-xs font-bold text-pink-700 mb-1">근무자: 이</div>
-                        <div class="grid grid-cols-4 gap-2 text-center">
-                            <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['이']['반차']}</div></div>
-                            <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['이']['off']}</div></div>
-                            <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['이']['연차']}</div></div>
-                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-emerald-600">${stats['이']['R']}</div></div>
-                        </div>
-                        <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50"><span class="font-semibold text-purple-700">연차:</span> ${leeLeaveStr}</div>
-                    </div>
-                </div>
-            `;
+                <h4 class="font-bold text-gray-800 text-sm mb-2">${title}</h4>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm border border-gray-100"><div class="text-[11px] text-gray-400 font-medium">반차</div><div class="text-sm font-bold text-amber-600">${counts['반차'] || 0}</div></div>
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm border border-gray-100"><div class="text-[11px] text-gray-400 font-medium">off</div><div class="text-sm font-bold text-rose-600">${counts['off'] || 0}</div></div>
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm border border-gray-100"><div class="text-[11px] text-gray-400 font-medium">연차</div><div class="text-sm font-bold text-purple-600">${counts['연차'] || 0}</div></div>
+                    <div class="bg-white p-2.5 rounded-xl shadow-sm border border-gray-100"><div class="text-[11px] text-gray-400 font-medium">R</div><div class="text-sm font-bold text-emerald-600">${counts['R'] || 0}</div></div>
+                </div>`;
             return card;
         }
 
-        window.closeStatsModal = function() {
-            document.getElementById('stats-modal').classList.add('hidden');
+        window.closeStatsModal = function() { document.getElementById('stats-modal').classList.add('hidden'); };
+
+        window.openYearStatsModal = function() {
+            let stats = { '윤': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 }, '이': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 } };
+            let curr = new Date(currentYear, 0, 1), end = new Date(currentYear, 11, 31);
+            while (curr <= end) {
+                let dateKey = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
+                let sched = (window.customSchedules && window.customSchedules[dateKey]) || getDefaultSchedule(curr);
+                ['윤', '이'].forEach(w => {
+                    if (Array.isArray(sched[w])) sched[w].forEach(t => { if (stats[w][t] !== undefined) stats[w][t]++; });
+                });
+                curr.setDate(curr.getDate() + 1);
+            }
+            const container = document.getElementById('year-stats-content');
+            container.innerHTML = '';
+            container.appendChild(createStatCard(`${currentYear}년 전체 근무자: 윤`, stats['윤']));
+            container.appendChild(createStatCard(`${currentYear}년 전체 근무자: 이`, stats['이']));
+            document.getElementById('year-stats-modal').classList.remove('hidden');
         };
+
+        window.closeYearStatsModal = function() { document.getElementById('year-stats-modal').classList.add('hidden'); };
 
         function showAlert(msg) {
             const alertBox = document.getElementById('alert-box');
