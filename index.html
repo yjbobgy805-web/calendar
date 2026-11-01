@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>달력</title>
     <!-- Tailwind CSS 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,37 +18,79 @@
             display: grid;
             grid-template-columns: repeat(7, minmax(0, 1fr));
         }
+        /* 달력에서 가로 스와이프는 월 이동 */
+        #calendar-days { touch-action: pan-y; }
+
+        /* 모바일 화면 안에 달력을 고정하고 페이지 자체 스크롤 방지 */
+        @media (max-width: 640px) {
+            html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; }
+            body { min-height: 0 !important; padding-bottom: 0 !important; justify-content: flex-start !important; }
+            body > header { flex: 0 0 auto; padding-top: 10px; padding-bottom: 10px; }
+            body > main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding-bottom: 8px; }
+            body > main > .calendar-grid:first-child { flex: 0 0 34px; align-items: center; font-size: 16px; margin-bottom: 6px; }
+            #calendar-days { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); gap: 5px; padding: 10px; overflow: hidden; }
+            #calendar-days > div { min-height: 0 !important; padding: 4px; }
+            body > header button { font-size: 12px; }
+            #current-month-title { font-size: 17px; }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between pb-10">
 
+    <!-- 로그인 오버레이 -->
+    <div id="auth-overlay" class="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-50 flex items-center justify-center px-4">
+        <div class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl border border-gray-100">
+            <div class="text-center mb-6">
+                <span class="text-3xl">🔒</span>
+                <h2 class="text-xl font-bold text-gray-900 mt-2">로그인</h2>
+                <p class="text-xs text-gray-500 mt-1">등록된 계정으로 로그인해주세요.</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">이메일 주소</label>
+                    <input type="email" id="auth-email" placeholder="example@email.com" class="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">비밀번호</label>
+                    <input type="password" id="auth-password" placeholder="••••••••" class="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800">
+                </div>
+                <button id="login-submit-btn" onclick="handleLogin()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition text-sm">
+                    로그인하기
+                </button>
+            </div>
+            <div id="auth-error-msg" class="text-xs text-red-500 text-center mt-4 hidden font-medium"></div>
+        </div>
+    </div>
+
     <!-- 상단 헤더 -->
     <header class="w-full max-w-2xl mx-auto px-4 py-4 flex flex-row justify-between items-center gap-1 sm:gap-2 flex-nowrap overflow-x-auto">
         <div class="flex items-center space-x-1 sm:space-x-2 shrink-0">
-            <!-- 월 이동 화살표를 날짜 양 옆에 배치 -->
             <button onclick="changeMonth(-1)" class="p-1.5 sm:p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 text-gray-600 transition">◀</button>
             <span class="text-sm sm:text-xl font-bold text-gray-800 whitespace-nowrap" id="current-month-title">2027. 01.</span>
             <button onclick="changeMonth(1)" class="p-1.5 sm:p-2 rounded-full bg-white shadow-sm hover:bg-gray-100 text-gray-600 transition">▶</button>
         </div>
         <div class="flex items-center justify-end gap-1 shrink-0">
-            <!-- 연도/월 통합 선택기 -->
+            <span id="sync-status" class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium hidden">🔒 인증 필요</span>
             <select id="year-month-select" onchange="jumpToYearMonth()" class="bg-white border border-gray-200 text-gray-700 text-[11px] sm:text-xs font-semibold px-2 sm:px-3 py-1.5 rounded-xl shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                <!-- 동적으로 생성되거나 기본 옵션 제공 -->
             </select>
-            <!-- 클라우드에 저장하기 버튼 -->
             <button onclick="manualCloudSave()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
                 ☁️ 저장
             </button>
-            <!-- 통합 통계 버튼 -->
             <button onclick="openStatsModal()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
                 📊 통계
+            </button>
+            <button onclick="openRulesModal()" class="bg-violet-100 hover:bg-violet-200 text-violet-800 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
+                ⚙️ 휴무 규칙
+            </button>
+            <button onclick="handleLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 sm:px-2.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition whitespace-nowrap">
+                🚪 로그아웃
             </button>
         </div>
     </header>
 
     <!-- 메인 달력 영역 -->
     <main class="w-full max-w-2xl mx-auto px-4 flex-grow">
-        <!-- 요일 헤더 -->
         <div class="calendar-grid text-center font-medium text-sm text-gray-500 mb-2">
             <div class="text-red-500">일</div>
             <div>월</div>
@@ -58,19 +100,10 @@
             <div>금</div>
             <div class="text-blue-500">토</div>
         </div>
-
-        <!-- 날짜 그리드 -->
         <div id="calendar-days" class="calendar-grid gap-1 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
-            <!-- 자바스크립트로 동적 생성 -->
         </div>
     </main>
 
-    <!-- 하단 푸터 데코레이션 -->
-    <footer class="w-full max-w-2xl mx-auto px-4 mt-6 text-center text-xs text-gray-400">
-        ✨ 근무 달력 (클라우드 실시간 동기화 적용)
-    </footer>
-
-    <!-- 알림 메시지 박스 -->
     <div id="alert-box" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-4 py-2 rounded-xl shadow-lg hidden z-50 transition"></div>
 
     <!-- 일정 수정 모달 -->
@@ -83,13 +116,11 @@
             <div id="modal-holiday-info" class="text-xs text-red-500 mb-3 hidden font-medium bg-red-50 p-2 rounded-lg"></div>
             
             <div id="modal-workers-container" class="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                <!-- 동적 근무자 편집 행 -->
             </div>
 
-            <!-- 일일 메모 입력 영역 -->
             <div class="mt-4 pt-3 border-t border-gray-100">
                 <label class="block text-xs font-semibold text-gray-700 mb-1">📝 그날 메모</label>
-                <input type="text" id="modal-daily-memo" placeholder="이 날의 메모를 입력하세요 (예: 회식, 정산 등)" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800">
+                <input type="text" id="modal-daily-memo" placeholder="이 날의 메모를 입력하세요" class="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800">
             </div>
 
             <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
@@ -104,6 +135,37 @@
         </div>
     </div>
 
+    <!-- 휴무 규칙 관리 모달: 규칙은 Firebase에만 저장 -->
+    <div id="rules-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center z-50 px-3 py-4">
+        <div class="bg-white rounded-2xl w-full max-w-3xl p-5 shadow-xl border border-gray-100 max-h-[92vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">휴무 규칙 관리</h3>
+                    <p class="text-xs text-gray-500 mt-1">2주 패턴을 개별 설정합니다. 저장한 규칙은 Firebase에 보관됩니다.</p>
+                </div>
+                <button onclick="closeRulesModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+            </div>
+            <div class="bg-indigo-50 rounded-xl p-3 mb-4">
+                <label class="block text-xs font-semibold text-indigo-900 mb-1">패턴 A가 시작되는 기준일 (보통 월요일)</label>
+                <input type="date" id="rules-base-date" class="w-full sm:w-auto px-3 py-2 text-sm bg-white border border-indigo-200 rounded-lg">
+                <p class="text-[11px] text-indigo-700 mt-1">기준일이 포함된 주를 A패턴, 다음 주를 B패턴으로 번갈아 적용합니다.</p>
+            </div>
+            <div class="flex gap-2 mb-3">
+                <button id="rules-tab-a" onclick="switchRulePattern('A')" class="flex-1 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white">A 패턴</button>
+                <button id="rules-tab-b" onclick="switchRulePattern('B')" class="flex-1 py-2 rounded-lg text-sm font-bold bg-gray-100 text-gray-600">B 패턴</button>
+            </div>
+            <p class="text-[11px] text-gray-500 mb-3">요일별로 윤·이 각각의 일정을 선택하세요. 아무것도 선택하지 않으면 해당 근무자의 기본 일정은 없습니다.</p>
+            <div id="rules-editor-content" class="space-y-2"></div>
+            <div class="flex flex-wrap justify-between items-center gap-2 mt-5 pt-3 border-t border-gray-100">
+                <button onclick="clearCurrentRulePattern()" class="px-3 py-2 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold">현재 패턴 비우기</button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="closeRulesModal()" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium">취소</button>
+                    <button onclick="saveRulesToCloud()" class="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">규칙 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 통계 모달 -->
     <div id="stats-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center z-50 px-4">
         <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl border border-gray-100">
@@ -112,14 +174,12 @@
                 <button onclick="closeStatsModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
             </div>
             
-            <!-- 탭 전환 버튼 -->
             <div class="flex bg-gray-100 p-1 rounded-xl mb-4">
                 <button id="tab-monthly-btn" onclick="switchStatsTab('monthly')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-sm transition">월별 통계</button>
                 <button id="tab-yearly-btn" onclick="switchStatsTab('yearly')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-gray-800 transition">1년 통계</button>
             </div>
 
             <div id="stats-content" class="space-y-4 max-h-80 overflow-y-auto pr-1">
-                <!-- 통합된 통계 내용 -->
             </div>
             <div class="mt-6 text-right">
                 <button onclick="closeStatsModal()" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition">닫기</button>
@@ -127,9 +187,10 @@
         </div>
     </div>
 
-    <!-- Firebase SDK 로드 -->
+    <!-- Firebase SDK 및 연동 로직 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -141,112 +202,138 @@
             appId: "1:726651967933:web:d481f8325a2242ea535ad4"
         };
 
-        let db = null;
+        let app, auth, db = null;
         const appId = "calendar-bba90-work-calendar";
 
+        // 전역 데이터 객체 (파이어베이스에서 불러온 규칙과 일정이 담김)
+        window.cloudData = {
+            holidays: {},
+            rules: {},
+            schedules: {}
+        };
+
         try {
-            const app = initializeApp(firebaseConfig);
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
             db = getFirestore(app);
-            console.log("Firebase initialized successfully");
-            loadCloudSchedules();
-        } catch (err) {
-            console.warn("Firebase init error:", err);
-            document.getElementById('sync-status').innerText = '📁 로컬 모드';
-            document.getElementById('sync-status').className = 'text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium';
-            loadLocalSchedules();
-        }
 
-        // Firestore에 일부 날짜가 { R: { memo, 윤, 이 } } 형태로
-        // 한 단계 더 감싸져 저장된 경우, 화면에서 사용하는 표준 형태로 읽어옵니다.
-        // 원본 Firestore 데이터는 이 단계에서 삭제하거나 변경하지 않습니다.
-        function normalizeSchedules(rawSchedules) {
-            if (!rawSchedules || typeof rawSchedules !== 'object' || Array.isArray(rawSchedules)) return {};
-            const normalized = {};
-            for (const [dateKey, rawValue] of Object.entries(rawSchedules)) {
-                if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
-                    normalized[dateKey] = rawValue;
-                    continue;
-                }
-                const keys = Object.keys(rawValue);
-                const wrapped = keys.length === 1 && rawValue.R &&
-                    typeof rawValue.R === 'object' && !Array.isArray(rawValue.R) &&
-                    ('윤' in rawValue.R || '이' in rawValue.R || 'memo' in rawValue.R || 'R' in rawValue.R);
-                normalized[dateKey] = wrapped ? rawValue.R : rawValue;
-            }
-            return normalized;
-        }
+            setPersistence(auth, browserSessionPersistence).catch((error) => {
+                console.warn("Persistence error:", error);
+            });
 
-        async function loadCloudSchedules() {
-            if (!db) return;
-            try {
-                const docRef = doc(db, "artifacts_data", appId);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data && data.schedules) {
-                        window.customSchedules = normalizeSchedules(data.schedules);
+            onAuthStateChanged(auth, async (user) => {
+                const overlay = document.getElementById('auth-overlay');
+                const syncElem = document.getElementById('sync-status');
+                if (user) {
+                    overlay.classList.add('hidden');
+                    if (syncElem) syncElem.classList.add('hidden');
+                    
+                    try {
+                        const docRef = doc(db, "artifacts_data", appId);
+                        const docSnap = await getDoc(docRef);
+                        
+                        if (docSnap.exists()) {
+                            const firestoreData = docSnap.data() || {};
+                            const savedCloudData = firestoreData.cloudData || {};
+
+                            // 이전 버전은 schedules를 문서 최상위에 저장했습니다.
+                            // 새 버전은 cloudData.schedules를 사용하므로, 기존 일정을 우선 복구/이관합니다.
+                            const oldRootSchedules = firestoreData.schedules || firestoreData.customSchedules || {};
+                            const newNestedSchedules = savedCloudData.schedules || {};
+                            const hasNestedSchedules = Object.keys(newNestedSchedules).length > 0;
+                            const hasOldSchedules = Object.keys(oldRootSchedules).length > 0;
+
+                            window.cloudData = {
+                                ...savedCloudData,
+                                holidays: savedCloudData.holidays || firestoreData.holidays || {},
+                                rules: savedCloudData.rules || firestoreData.rules || {},
+                                schedules: hasNestedSchedules ? newNestedSchedules :
+                                    (hasOldSchedules ? oldRootSchedules : {})
+                            };
+
+                            // 최상위에 남아 있던 기존 일정을 삭제하지 않고 새 구조에도 복사합니다.
+                            // setDoc의 merge 옵션을 사용하며, schedules 외의 기존 데이터도 보존합니다.
+                            const needsMigration = hasOldSchedules && !hasNestedSchedules;
+                            if (needsMigration || !firestoreData.cloudData) {
+                                await setDoc(docRef, { cloudData: window.cloudData }, { merge: true });
+                                console.info("기존 Firebase 일정 데이터를 cloudData.schedules로 복구/이관했습니다.",
+                                    Object.keys(window.cloudData.schedules).length, "건");
+                            }
+                        } else {
+                            // 문서 자체가 없을 때만 빈 데이터로 시작합니다.
+                            window.cloudData = { holidays: {}, rules: {}, schedules: {} };
+                            await setDoc(docRef, { cloudData: window.cloudData }, { merge: true });
+                        }
+                    } catch (e) {
+                        console.error("Cloud load error:", e);
+                    }
+                    if (typeof window.renderCalendar === 'function') {
+                        window.renderCalendar();
+                    }
+                } else {
+                    overlay.classList.remove('hidden');
+                    if (syncElem) {
+                        syncElem.innerText = '🔒 인증 필요';
+                        syncElem.classList.remove('hidden');
                     }
                 }
-                const syncElem = document.getElementById('sync-status');
-                if (syncElem) {
-                    syncElem.innerText = '☁️ 클라우드 동기화됨';
-                    syncElem.className = 'text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium';
-                }
-                if (typeof window.renderCalendar === 'function') {
-                    window.renderCalendar();
-                }
-            } catch (err) {
-                console.warn("Firestore sync error:", err);
-                const syncElem = document.getElementById('sync-status');
-                if (syncElem) {
-                    syncElem.innerText = '⚠️ 클라우드 읽기 실패';
-                    syncElem.className = 'text-xs bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-medium';
-                }
-                loadLocalSchedules();
-            }
+            });
+        } catch (err) {
+            document.getElementById('auth-overlay').classList.add('hidden');
         }
 
-        function loadLocalSchedules() {
-            const saved = localStorage.getItem('work_calendar_schedules_2027');
-            if (saved) {
+        window.handleLogin = async function() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
+            const errorMsg = document.getElementById('auth-error-msg');
+
+            if (!email || !password) {
+                errorMsg.innerText = "이메일과 비밀번호를 모두 입력해주세요.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                errorMsg.classList.add('hidden');
+                showAlert("로그인 성공!");
+            } catch (error) {
+                errorMsg.innerText = "로그인 실패: 이메일이나 비밀번호를 다시 확인해주세요.";
+                errorMsg.classList.remove('hidden');
+            }
+        };
+
+        window.handleLogout = async function() {
+            if (auth) {
                 try {
-                    window.customSchedules = JSON.parse(saved);
-                } catch (e) {
-                    window.customSchedules = {};
-                }
+                    await signOut(auth);
+                    showAlert("로그아웃 되었습니다.");
+                } catch (e) {}
             } else {
-                window.customSchedules = {};
+                document.getElementById('auth-overlay').classList.remove('hidden');
             }
-            if (typeof window.renderCalendar === 'function') {
-                window.renderCalendar();
-            }
-        }
+        };
 
-        window.saveScheduleToCloud = async function(newSchedules) {
-            newSchedules = normalizeSchedules(newSchedules);
-            window.customSchedules = newSchedules;
-            localStorage.setItem('work_calendar_schedules_2027', JSON.stringify(newSchedules));
+        window.saveDataToCloud = async function(newData, options = {}) {
+            if (db && auth && !auth.currentUser) {
+                console.error("Firebase 로그인 전 저장을 차단했습니다. 기존 데이터를 덮어쓰지 않습니다.");
+                if (!options.silent) showAlert("로그인 상태를 확인한 뒤 다시 저장해 주세요.");
+                return;
+            }
+            window.cloudData = newData;
 
             if (db) {
                 try {
                     const docRef = doc(db, "artifacts_data", appId);
-                    await setDoc(docRef, { schedules: newSchedules }, { merge: true });
-                    const syncElem = document.getElementById('sync-status');
-                    if (syncElem) {
-                        syncElem.innerText = '☁️ 저장 완료';
-                        syncElem.className = 'text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium';
-                        setTimeout(() => {
-                            syncElem.innerText = '☁️ 클라우드 동기화됨';
-                            syncElem.className = 'text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium';
-                        }, 2000);
-                    }
-                    showAlert("클라우드에 성공적으로 저장되었습니다!");
+                    await setDoc(docRef, { cloudData: newData }, { merge: true });
+                    if (!options.silent) showAlert("파이어베이스에 저장되었습니다!");
                 } catch (err) {
-                    console.error("Firestore save error:", err);
-                    showAlert("클라우드 저장 실패: 인터넷 연결과 Firebase 설정을 확인해 주세요.");
+                    console.error("Firebase save error:", err);
+                    if (!options.silent) showAlert("저장 실패");
+                    throw err;
                 }
             } else {
-                showAlert("클라우드 연결 실패: 이 기기 안에만 저장됩니다.");
+                if (!options.silent) showAlert("저장되었습니다.");
             }
             if (typeof window.renderCalendar === 'function') {
                 window.renderCalendar();
@@ -254,10 +341,9 @@
         };
 
         window.manualCloudSave = function() {
-            window.saveScheduleToCloud(window.customSchedules || {});
+            window.saveDataToCloud(window.cloudData || {});
         };
 
-        // 앱 초기화 실행
         if (typeof window.initCalendarApp === 'function') {
             window.initCalendarApp();
         }
@@ -265,6 +351,18 @@
 
     <!-- 애플리케이션 로직 스크립트 -->
     <script>
+        window.cloudData = window.cloudData || { holidays: {}, rules: {}, schedules: {} };
+
+        let todayNow = new Date();
+        let currentYear = todayNow.getFullYear();
+        let currentMonth = todayNow.getMonth();
+        let selectedDateStr = null;
+        let currentStatsMode = 'monthly';
+
+
+        // 사용자가 제공한 대한민국 공휴일 목록 (2026~2030)
+        // 이 목록은 Firebase cloudData.holidays에 최초 병합 저장되며,
+        // 달력은 이후 Firebase에 저장된 값을 기준으로 표시합니다.
         const holidaysAll = {
             // 2026년 하반기 공휴일
             "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴",
@@ -275,22 +373,22 @@
             "2027-01-01": "신정",
             "2027-02-06": "설날 연휴", "2027-02-07": "설날", "2027-02-08": "설날 연휴", "2027-02-09": "대체공휴일",
             "2027-03-01": "삼일절",
-             "2027-05-01": "근로자의날",  "2027-05-03": "대체공휴일", "2027-05-05": "어린이날", "2027-05-13": "부처님오신날",
-            "2027-06-06": "현충일", 
+            "2027-05-01": "근로자의날", "2027-05-03": "대체공휴일", "2027-05-05": "어린이날", "2027-05-13": "부처님오신날",
+            "2027-06-06": "현충일",
             "2027-07-17": "제헌절", "2027-07-19": "대체공휴일",
             "2027-08-15": "광복절", "2027-08-16": "대체공휴일",
             "2027-09-14": "추석 연휴", "2027-09-15": "추석", "2027-09-16": "추석 연휴",
-            "2027-10-03": "개천절", "2027-10-04": "대체공휴일",  
+            "2027-10-03": "개천절", "2027-10-04": "대체공휴일",
             "2027-10-09": "한글날", "2027-10-11": "대체공휴일",
             "2027-12-25": "크리스마스", "2027-12-27": "대체공휴일",
 
-            // 2028년 공휴일 (설날: 1월 26일~28일)
-            "2028-01-01": "신정",  
+            // 2028년 공휴일
+            "2028-01-01": "신정",
             "2028-01-26": "설날 연휴", "2028-01-27": "설날", "2028-01-28": "설날 연휴",
             "2028-03-01": "삼일절",
             "2028-05-01": "노동절", "2028-05-02": "부처님오신날", "2028-05-05": "어린이날",
             "2028-06-06": "현충일", "2028-06-14": "지방선거",
-            "2028-07-17": "제헌절", 
+            "2028-07-17": "제헌절",
             "2028-08-15": "광복절",
             "2028-10-02": "추석 연휴", "2028-10-03": "개천절/추석", "2028-10-04": "추석 연휴", "2028-10-05": "대체공휴일",
             "2028-10-09": "한글날",
@@ -302,7 +400,7 @@
             "2029-03-01": "삼일절",
             "2029-05-01": "노동절", "2029-05-05": "어린이날", "2029-05-07": "대체공휴일", "2029-05-20": "부처님오신날", "2029-05-21": "대체공휴일",
             "2029-06-06": "현충일",
-            "2029-07-17": "제헌절", 
+            "2029-07-17": "제헌절",
             "2029-08-15": "광복절",
             "2029-09-21": "추석 연휴", "2029-09-22": "추석", "2029-09-23": "추석 연휴", "2029-09-24": "대체공휴일",
             "2029-10-03": "개천절",
@@ -322,13 +420,61 @@
             "2030-12-25": "크리스마스"
         };
 
-        window.customSchedules = window.customSchedules || {};
+        // 연도별 공휴일을 사용자가 제공한 holidaysAll에서 가져와 Firebase에 병합 저장합니다.
+        const publicHolidayYearCache = new Set();
+        let publicHolidayMap = {};
 
-        let todayNow = new Date();
-        let currentYear = todayNow.getFullYear();
-        let currentMonth = todayNow.getMonth();
-        let selectedDateStr = null;
-        let currentStatsMode = 'monthly'; // 'monthly' 또는 'yearly'
+        async function loadKoreanPublicHolidays(year) {
+            if (publicHolidayYearCache.has(year)) return;
+
+            const yearPrefix = `${year}-`;
+            const yearEntries = Object.entries(holidaysAll).filter(([date]) => date.startsWith(yearPrefix));
+            const existingHolidays = (window.cloudData && window.cloudData.holidays) || {};
+            const mergedHolidays = { ...holidaysAll, ...existingHolidays };
+            let changed = false;
+
+            // 기존 Firebase에 저장된 값은 보존하고, 누락된 날짜만 holidaysAll에서 채웁니다.
+            yearEntries.forEach(([date, name]) => {
+                if (!Object.prototype.hasOwnProperty.call(existingHolidays, date)) {
+                    mergedHolidays[date] = name;
+                    changed = true;
+                }
+            });
+
+            // 표시용 데이터도 Firebase 우선으로 구성합니다.
+            Object.entries(mergedHolidays).forEach(([date, value]) => {
+                publicHolidayMap[date] = Array.isArray(value) ? value.join(', ') : String(value || '');
+            });
+
+            try {
+                if (changed && typeof window.saveDataToCloud === 'function') {
+                    const nextData = JSON.parse(JSON.stringify(window.cloudData || {}));
+                    nextData.holidays = mergedHolidays;
+                    await window.saveDataToCloud(nextData, { silent: true });
+                }
+                publicHolidayYearCache.add(year);
+
+                if (currentYear === year && typeof window.renderCalendar === 'function') {
+                    window.renderCalendar();
+                }
+            } catch (error) {
+                console.error(`${year}년 공휴일 Firebase 저장 실패:`, error);
+                // 저장 실패 시 캐시하지 않아 다음 화면 갱신 때 재시도할 수 있게 합니다.
+            }
+        }
+
+        function getHolidayName(dateStr) {
+            const holidays = (window.cloudData && window.cloudData.holidays) || {};
+            const value = holidays[dateStr] || holidaysAll[dateStr] || publicHolidayMap[dateStr] || '';
+            return Array.isArray(value) ? value.join(', ') : String(value || '');
+        }
+
+        function isPublicHoliday(dateStr) {
+            const holidays = (window.cloudData && window.cloudData.holidays) || {};
+            return Object.prototype.hasOwnProperty.call(holidaysAll, dateStr) ||
+                Object.prototype.hasOwnProperty.call(holidays, dateStr) ||
+                Object.prototype.hasOwnProperty.call(publicHolidayMap, dateStr);
+        }
 
         window.initCalendarApp = function() {
             initYearMonthDropdown();
@@ -349,106 +495,48 @@
             }
         }
 
-        // 2027년 3월부터 적용되는 연속 격주(2주 주기) 반복 근무 규칙 함수 (월마다 리셋되지 않고 무조건 격주 교대)
-        function getCustomMarch2027Rule(date) {
-            const year = date.getFullYear();
-            const month = date.getMonth(); // 0-indexed
-            const dayOfWeek = date.getDay(); // 0: 일, 1: 월, 2: 화, 3: 수, 4: 목, 5: 금, 6: 토
+        // Firebase에 저장된 규칙만으로 기본 일정을 계산합니다.
+        // 규칙이 없거나 기준일이 없으면 어떤 기본 일정도 만들지 않습니다.
+        function getRuleCalculatedSchedule(dateObj) {
+            const empty = { '윤': [], '이': [], 'R': [], 'memo': '' };
+            const cloud = window.cloudData || {};
+            const rules = cloud.rules || {};
+            if (!rules.baseDate || !rules.patterns) return empty;
 
-            // 2026년 11월 1일 이후 전체 대상 (기본 규칙 적용 시작)
-            const isTargetPeriod = (year > 2026) || (year === 2026 && month >= 10);
-            if (!isTargetPeriod) return null;
+            const [by, bm, bd] = rules.baseDate.split('-').map(Number);
+            if (!by || !bm || !bd) return empty;
 
-            // 2026년 11월 2일(월요일)을 기준점으로 하여 무조건 연속 격주 반복 계산
-            const baseDate = new Date(2026, 10, 2);
-
-            const diffTime = date.getTime() - baseDate.getTime();
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            // 날짜를 UTC 기준으로 계산해 서머타임/시간대 영향을 피합니다.
+            const baseUTC = Date.UTC(by, bm - 1, bd);
+            const targetUTC = Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+            const diffDays = Math.floor((targetUTC - baseUTC) / 86400000);
             const diffWeeks = Math.floor(diffDays / 7);
+            const patternKey = (Math.abs(diffWeeks) % 2 === 0) ? 'A' : 'B';
+            const dayKey = String(dateObj.getDay());
+            const dayRule = (rules.patterns[patternKey] || {})[dayKey] || {};
 
-            // 짝수 주 / 홀수 주 교대 패턴 (휴가 등으로 쉬어도 절대 리셋되지 않고 주차별로 계속 흐름)
-            const isFirstPatternOfWeek = (Math.abs(diffWeeks) % 2 === 0);
-
-            let yoonArr = [];
-            let leeArr = [];
-
-            // 요청하신 2주 주기 반복 패턴:
-            // 1주차(패턴1): 월(이 반차), 화(윤 반차), 수(윤 반차), 목(이 반차, 이 off, 이 R), 금(윤 반차), 토(윤 off, 윤 R)
-            // 2주차(패턴2): 월(이 반차), 화(이 반차), 수(윤 반차, 윤 off, 윤 R), 목(이 반차), 금(윤 반차), 토(이 off, 이 R)
-            if (isFirstPatternOfWeek) {
-                if (dayOfWeek === 1) { leeArr.push('반차'); }
-                else if (dayOfWeek === 2) { yoonArr.push('반차'); }
-                else if (dayOfWeek === 3) { yoonArr.push('반차'); }
-                else if (dayOfWeek === 4) { leeArr.push('반차'); leeArr.push('off'); leeArr.push('R'); }
-                else if (dayOfWeek === 5) { yoonArr.push('반차'); }
-                else if (dayOfWeek === 6) { yoonArr.push('off'); yoonArr.push('R'); }
-            } else {
-                if (dayOfWeek === 1) { leeArr.push('반차'); }
-                else if (dayOfWeek === 2) { leeArr.push('반차'); }
-                else if (dayOfWeek === 3) { yoonArr.push('반차'); yoonArr.push('off'); yoonArr.push('R'); }
-                else if (dayOfWeek === 4) { leeArr.push('반차'); }
-                else if (dayOfWeek === 5) { yoonArr.push('반차'); }
-                else if (dayOfWeek === 6) { leeArr.push('off'); leeArr.push('R'); }
-            }
-
-            return { '윤': yoonArr, '이': leeArr };
+            const result = { '윤': [], '이': [], 'R': [], 'memo': '' };
+            ['윤', '이'].forEach(worker => {
+                const values = dayRule[worker];
+                if (Array.isArray(values)) result[worker] = values.filter(v => ['반차', 'off', '연차', 'R'].includes(v));
+            });
+            return result;
         }
 
-        function getDefaultSchedule(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
+        function getFinalSchedule(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
             const dateStr = `${year}-${month}-${day}`;
-            const dayOfWeek = date.getDay();
-            
-            let isHoliday = holidaysAll[dateStr] !== undefined;
 
-            if (window.customSchedules && window.customSchedules[dateStr]) {
-                const saved = window.customSchedules[dateStr];
-                return saved;
-            }
+            // 공휴일에는 저장된 근무/반차/off/연차/알바 등 어떤 일정도 표시하거나 집계하지 않습니다.
+            if (isPublicHoliday(dateStr)) return { '윤': [], '이': [], 'R': [], 'memo': '' };
 
-            // 공휴일이면 아무것도 적지 않음 (빈 일정 반환)
-            if (isHoliday) {
-                return {
-                    '윤': [],
-                    '이': [],
-                    'R': [],
-                    'memo': ''
-                };
+            // 파이어베이스에 사용자가 수정한 변동사항(schedules)이 있으면 우선 적용, 없으면 규칙 기반 계산값 반환
+            if (window.cloudData.schedules && window.cloudData.schedules[dateStr]) {
+                return window.cloudData.schedules[dateStr];
             }
-
-            // 2027년 3월 이후 상세 규칙 적용 확인
-            const customMarchRule = getCustomMarch2027Rule(date);
-            if (customMarchRule) {
-                return {
-                    '윤': customMarchRule['윤'],
-                    '이': customMarchRule['이'],
-                    'R': [],
-                    'memo': ''
-                };
-            }
-
-            let yoonArr = [];
-            let leeArr = [];
-            let albaList = [];
-
-            if (dayOfWeek === 3 || dayOfWeek === 5) {
-                yoonArr.push('반차');
-            }
-            if (dayOfWeek === 1 || dayOfWeek === 4) {
-                leeArr.push('반차');
-            }
-            if (dayOfWeek === 2) {
-                leeArr.push('반차');
-            }
-
-            return {
-                '윤': yoonArr,
-                '이': leeArr,
-                'R': albaList,
-                'memo': ''
-            };
+            return getRuleCalculatedSchedule(dateObj);
         }
 
         function createBadge(workerName, type, isAlbaCustom, albaName) {
@@ -463,34 +551,23 @@
             } else {
                 displayText = `${workerName} ${type}`;
                 if (workerName === '이') {
-                    if (type === '반차') {
-                        badge.classList.add('bg-pink-100', 'text-pink-900');
-                    } else if (type === 'R') {
-                        badge.classList.add('bg-pink-700', 'text-white');
-                    } else {
-                        badge.classList.add('bg-pink-700', 'text-white');
-                    }
+                    if (type === '반차') badge.classList.add('bg-pink-100', 'text-pink-900');
+                    else badge.classList.add('bg-pink-700', 'text-white');
                 } else if (workerName === '윤') {
-                    if (type === '반차') {
-                        badge.classList.add('bg-amber-100', 'text-amber-900');
-                    } else {
+                    if (type === '반차') badge.classList.add('bg-amber-100', 'text-amber-900');
+                    else {
                         badge.style.backgroundColor = '#F79646';
                         badge.style.color = '#ffffff';
                     }
-                } else {
-                    if (type === '반차') {
-                        badge.classList.add('bg-emerald-100', 'text-emerald-900');
-                    } else {
-                        badge.classList.add('bg-pink-700', 'text-white');
-                    }
                 }
             }
-
             badge.innerText = displayText;
             return badge;
         }
 
         window.renderCalendar = function() {
+            // 현재 연도의 holidaysAll 공휴일을 Firebase에 동기화합니다.
+            loadKoreanPublicHolidays(currentYear);
             const titleElem = document.getElementById('current-month-title');
             if (titleElem) {
                 titleElem.innerText = `${currentYear}. ${String(currentMonth + 1).padStart(2, '0')}.`;
@@ -510,34 +587,30 @@
             const prevTotalDays = new Date(currentYear, currentMonth, 0).getDate();
 
             for (let i = firstDayIndex - 1; i >= 0; i--) {
-                const dayNum = prevTotalDays - i;
-                const cell = createCell(dayNum, true);
-                container.appendChild(cell);
+                container.appendChild(createCell(prevTotalDays - i, true, null));
             }
 
             for (let d = 1; d <= totalDays; d++) {
                 const dateObj = new Date(currentYear, currentMonth, d);
-                const cell = createCell(dateObj, false);
-                container.appendChild(cell);
+                container.appendChild(createCell(dateObj, false, false));
             }
 
             const totalCells = container.children.length;
             const nextDaysCount = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
             for (let d = 1; d <= nextDaysCount; d++) {
-                const cell = createCell(d, true);
-                container.appendChild(cell);
+                container.appendChild(createCell(d, true, null));
             }
         };
 
-        function createCell(dayOrDate, isOtherMonth) {
+        function createCell(dayOrDate, isOtherMonth, isPrevOrNext) {
             const cell = document.createElement('div');
             cell.className = "min-h-[85px] sm:min-h-[100px] p-1 rounded-lg sm:rounded-xl border border-gray-100 flex flex-col justify-between transition relative";
 
-            if (isOtherMonth) {
+            if (isOtherMonth && (isPrevOrNext === null || typeof dayOrDate === 'number')) {
                 cell.classList.add('bg-gray-50/50', 'opacity-40');
                 const span = document.createElement('span');
                 span.className = "text-[10px] sm:text-xs font-medium text-gray-400";
-                span.innerText = dayOrDate;
+                span.innerText = dayOrDate instanceof Date ? dayOrDate.getDate() : dayOrDate;
                 cell.appendChild(span);
                 return cell;
             }
@@ -556,28 +629,34 @@
                 dateObj.getDate() === now.getDate()
             );
 
+            const isHoliday = isPublicHoliday(dateStr);
+            const holidayName = getHolidayName(dateStr);
+
             cell.classList.add('cursor-pointer', 'hover:bg-amber-50/30');
-            cell.onclick = () => openEditModal(dateStr);
+            // 공휴일은 편집할 수 없도록 막아 근무/휴무가 추가되지 않게 합니다.
+            cell.onclick = () => {
+                if (isHoliday) return;
+                openEditModal(dateStr);
+            };
 
-            const schedule = getDefaultSchedule(dateObj);
+            const schedule = getFinalSchedule(dateObj);
 
-        // 공휴일인지 여부만 체크하도록 변경
-const isHoliday = holidaysAll[dateStr] !== undefined;
-
-if (isToday) {
-    cell.classList.add('bg-gray-100', 'ring-2', 'ring-gray-300');
-} else if (isHoliday) {
-    cell.classList.add('bg-rose-50/70'); // 공휴일일 때만 연분홍색 배경
-} else {
-    cell.classList.add('bg-white');
-}
+            if (isHoliday) {
+                cell.classList.add('bg-rose-50/70');
+            } else if (isToday) {
+                cell.classList.add('bg-gray-100', 'ring-2', 'ring-gray-300');
+            } else {
+                cell.classList.add('bg-white');
+            }
 
             const topRow = document.createElement('div');
             topRow.className = "flex justify-between items-center text-[10px] sm:text-xs font-semibold";
 
             const dayNumSpan = document.createElement('span');
             dayNumSpan.innerText = dateObj.getDate();
-            if (isToday) {
+            if (isHoliday) {
+                dayNumSpan.className = "text-red-600 font-bold";
+            } else if (isToday) {
                 dayNumSpan.className = "bg-gray-800 text-white px-1.5 py-0.5 rounded-md font-bold text-[10px]";
             } else if (dayOfWeek === 0) {
                 dayNumSpan.className = "text-red-500";
@@ -588,11 +667,10 @@ if (isToday) {
             }
             topRow.appendChild(dayNumSpan);
 
-            if (holidaysAll[dateStr]) {
+            if (isHoliday) {
                 const holidayBadge = document.createElement('span');
-                holidayBadge.className = "text-[9px] bg-red-100 text-red-600 px-0.5 rounded truncate max-w-[55px]";
-                holidayBadge.innerText = holidaysAll[dateStr];
-                holidayBadge.title = holidaysAll[dateStr];
+                holidayBadge.className = "text-[9px] bg-red-100 text-red-600 px-1 rounded truncate max-w-[65px]";
+                holidayBadge.innerText = holidayName;
                 topRow.appendChild(holidayBadge);
             }
             cell.appendChild(topRow);
@@ -604,7 +682,6 @@ if (isToday) {
                 const memoDiv = document.createElement('div');
                 memoDiv.className = "text-[9px] text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded truncate font-medium mb-0.5";
                 memoDiv.innerText = ` ${schedule['memo']}`;
-                memoDiv.title = schedule['memo'];
                 contentWrapper.appendChild(memoDiv);
             }
 
@@ -612,45 +689,25 @@ if (isToday) {
             badgesContainer.className = "flex flex-col gap-0.5 overflow-y-auto max-h-[50px]";
 
             let allBadges = [];
-
-            if (Array.isArray(schedule['윤'])) {
-                schedule['윤'].forEach(t => allBadges.push({ worker: '윤', type: t, isAlba: false }));
-            }
-            if (Array.isArray(schedule['이'])) {
-                schedule['이'].forEach(t => allBadges.push({ worker: '이', type: t, isAlba: false }));
-            }
+            if (Array.isArray(schedule['윤'])) schedule['윤'].forEach(t => allBadges.push({ worker: '윤', type: t, isAlba: false }));
+            if (Array.isArray(schedule['이'])) schedule['이'].forEach(t => allBadges.push({ worker: '이', type: t, isAlba: false }));
             if (schedule['R'] && Array.isArray(schedule['R'])) {
-                schedule['R'].forEach(a => {
-                    allBadges.push({ worker: a.name || '알바', type: '알바', isAlba: true, albaName: a.name || '알바' });
-                });
+                schedule['R'].forEach(a => allBadges.push({ worker: a.name || '알바', type: '알바', isAlba: true, albaName: a.name || '알바' }));
             }
-
-            allBadges.sort((a, b) => {
-                if (a.isAlba && !b.isAlba) return 1;
-                if (!a.isAlba && b.isAlba) return -1;
-                if (a.type === '반차' && b.type !== '반차') return 1;
-                if (a.type !== '반차' && b.type === '반차') return -1;
-                return 0;
-            });
 
             allBadges.forEach(item => {
                 badgesContainer.appendChild(createBadge(item.worker, item.type, item.isAlba, item.albaName));
             });
             contentWrapper.appendChild(badgesContainer);
-
             cell.appendChild(contentWrapper);
+
             return cell;
         }
 
         window.changeMonth = function(direction) {
             currentMonth += direction;
-            if (currentMonth > 11) {
-                currentMonth = 0;
-                currentYear++;
-            } else if (currentMonth < 0) {
-                currentMonth = 11;
-                currentYear--;
-            }
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            else if (currentMonth < 0) { currentMonth = 11; currentYear--; }
             renderCalendar();
         };
 
@@ -665,31 +722,24 @@ if (isToday) {
         };
 
         window.openEditModal = function(dateStr) {
+            if (isPublicHoliday(dateStr)) {
+                showAlert(`${getHolidayName(dateStr)}에는 일정을 편집할 수 없습니다.`);
+                return;
+            }
             selectedDateStr = dateStr;
             const [y, m, d] = dateStr.split('-');
             document.getElementById('modal-date-title').innerText = `${y}년 ${m}월 ${d}일 일정 편집`;
 
-            const holidayInfo = document.getElementById('modal-holiday-info');
-            if (holidaysAll[dateStr]) {
-                holidayInfo.innerText = `📌 공휴일(${holidaysAll[dateStr]})이므로 기본 근무가 자동으로 해제됩니다.`;
-                holidayInfo.classList.remove('hidden');
-            } else {
-                holidayInfo.classList.add('hidden');
-            }
-
             const dateObj = new Date(y, m - 1, d);
-            const sched = getDefaultSchedule(dateObj);
+            const sched = getFinalSchedule(dateObj);
 
             const container = document.getElementById('modal-workers-container');
             container.innerHTML = '';
-
-            container.appendChild(createWorkerEditRow('윤', sched['윤'] || [], false));
-            container.appendChild(createWorkerEditRow('이', sched['이'] || [], false));
+            container.appendChild(createWorkerEditRow('윤', sched['윤'] || []));
+            container.appendChild(createWorkerEditRow('이', sched['이'] || []));
 
             if (sched['R'] && Array.isArray(sched['R'])) {
-                sched['R'].forEach((a) => {
-                    container.appendChild(createAlbaEditRow(a.name || ''));
-                });
+                sched['R'].forEach(a => container.appendChild(createAlbaEditRow(a.name || '')));
             }
 
             document.getElementById('modal-daily-memo').value = sched['memo'] || '';
@@ -701,33 +751,24 @@ if (isToday) {
             row.className = "flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100 gap-2";
 
             const leftDiv = document.createElement('div');
-            leftDiv.className = "flex items-center gap-2 w-full sm:w-auto";
-
             const nameSpan = document.createElement('span');
             nameSpan.className = "font-bold text-gray-800 text-sm w-12";
             nameSpan.innerText = name;
             leftDiv.appendChild(nameSpan);
-
             row.appendChild(leftDiv);
 
             const btnGroup = document.createElement('div');
-            btnGroup.className = "worker-buttons-group flex flex-wrap gap-1.5 w-full sm:w-auto";
+            btnGroup.className = "worker-buttons-group flex flex-wrap gap-1.5";
 
-            const options = ['반차', 'off', '연차', 'R'];
-            options.forEach(opt => {
+            ['반차', 'off', '연차', 'R'].forEach(opt => {
                 const btn = document.createElement('button');
                 btn.type = "button";
                 btn.dataset.val = opt;
                 btn.innerText = opt;
-                
-                let isSelected = currentTypes.includes(opt);
-                updateButtonStyle(btn, isSelected);
-
-                btn.onclick = () => {
-                    let nowSelected = btn.classList.contains('bg-gray-800');
-                    updateButtonStyle(btn, !nowSelected);
+                updateButtonStyle(btn, currentTypes.includes(opt));
+                btn.onclick = function() {
+                    updateButtonStyle(btn, !btn.classList.contains('bg-gray-800'));
                 };
-
                 btnGroup.appendChild(btn);
             });
 
@@ -741,19 +782,12 @@ if (isToday) {
 
             const leftDiv = document.createElement('div');
             leftDiv.className = "flex items-center gap-2";
-
             const nameInput = document.createElement('input');
             nameInput.type = "text";
             nameInput.value = albaNameVal;
             nameInput.className = "alba-name-input px-2.5 py-1 text-xs font-bold text-gray-800 bg-white border border-gray-200 rounded-lg w-28 focus:outline-none focus:ring-1 focus:ring-indigo-500";
             nameInput.placeholder = "알바 이름";
             leftDiv.appendChild(nameInput);
-
-            const labelSpan = document.createElement('span');
-            labelSpan.className = "text-xs font-medium text-gray-500";
-            labelSpan.innerText = "알바";
-            leftDiv.appendChild(labelSpan);
-
             row.appendChild(leftDiv);
 
             const delBtn = document.createElement('button');
@@ -767,8 +801,7 @@ if (isToday) {
         }
 
         window.addCustomAlba = function() {
-            const container = document.getElementById('modal-workers-container');
-            container.appendChild(createAlbaEditRow(''));
+            document.getElementById('modal-workers-container').appendChild(createAlbaEditRow(''));
         };
 
         function updateButtonStyle(btn, isSelected) {
@@ -786,47 +819,157 @@ if (isToday) {
         window.saveModalChanges = function() {
             if (!selectedDateStr) return;
 
-            const container = document.getElementById('modal-workers-container');
-            const rows = container.querySelectorAll('div.bg-gray-50');
-
-            let yoonTypes = [];
-            let leeTypes = [];
-            let albaList = [];
+            const rows = document.querySelectorAll('#modal-workers-container > div');
+            let yoonTypes = [], leeTypes = [], albaList = [];
 
             rows.forEach(row => {
-                const workerNameElem = row.querySelector('.font-bold');
-                const albaInputElem = row.querySelector('.alba-name-input');
-                
-                if (albaInputElem) {
-                    const albaName = albaInputElem.value.trim();
-                    if (albaName !== '') {
-                        albaList.push({ name: albaName });
-                    }
-                } else if (workerNameElem) {
-                    const wName = workerNameElem.innerText;
+                const nameElem = row.querySelector('.font-bold');
+                const albaInput = row.querySelector('.alba-name-input');
+                if (albaInput) {
+                    if (albaInput.value.trim() !== '') albaList.push({ name: albaInput.value.trim() });
+                } else if (nameElem) {
                     const activeBtns = row.querySelectorAll('.worker-buttons-group button.bg-gray-800');
-                    let selectedOpts = [];
-                    activeBtns.forEach(b => selectedOpts.push(b.dataset.val));
-
-                    if (wName === '윤') yoonTypes = selectedOpts;
-                    if (wName === '이') leeTypes = selectedOpts;
+                    let opts = [];
+                    activeBtns.forEach(b => opts.push(b.dataset.val));
+                    if (nameElem.innerText === '윤') yoonTypes = opts;
+                    if (nameElem.innerText === '이') leeTypes = opts;
                 }
             });
 
-            const dailyMemo = document.getElementById('modal-daily-memo').value.trim();
+            let newCloudData = JSON.parse(JSON.stringify(window.cloudData || {}));
+            if (!newCloudData.schedules) newCloudData.schedules = {};
 
-            let newSchedules = { ...(window.customSchedules || {}) };
-            newSchedules[selectedDateStr] = {
+            newCloudData.schedules[selectedDateStr] = {
                 '윤': yoonTypes,
                 '이': leeTypes,
                 'R': albaList,
-                'memo': dailyMemo
+                'memo': document.getElementById('modal-daily-memo').value.trim()
             };
 
             closeModal();
-            if (typeof window.saveScheduleToCloud === 'function') {
-                window.saveScheduleToCloud(newSchedules);
+            window.saveDataToCloud(newCloudData);
+        };
+
+        // ---------------- 휴무 규칙 편집 ----------------
+        let editingRulePattern = 'A';
+        let rulesDraft = null;
+        const ruleDays = [
+            { key: '0', label: '일요일' }, { key: '1', label: '월요일' },
+            { key: '2', label: '화요일' }, { key: '3', label: '수요일' },
+            { key: '4', label: '목요일' }, { key: '5', label: '금요일' },
+            { key: '6', label: '토요일' }
+        ];
+        const ruleTypes = ['반차', 'off', '연차', 'R'];
+
+        window.openRulesModal = function() {
+            const rules = (window.cloudData && window.cloudData.rules) || {};
+            rulesDraft = JSON.parse(JSON.stringify(rules));
+            if (!rulesDraft.patterns) rulesDraft.patterns = {};
+            document.getElementById('rules-base-date').value = rulesDraft.baseDate || '';
+            editingRulePattern = 'A';
+            renderRuleEditor();
+            document.getElementById('rules-modal').classList.remove('hidden');
+        };
+
+        window.closeRulesModal = function() {
+            document.getElementById('rules-modal').classList.add('hidden');
+        };
+
+        window.switchRulePattern = function(pattern) {
+            captureVisibleRulePattern();
+            editingRulePattern = pattern;
+            renderRuleEditor();
+        };
+
+        function captureVisibleRulePattern() {
+            if (!rulesDraft) rulesDraft = { baseDate: '', patterns: {} };
+            const pattern = {};
+            ruleDays.forEach(day => pattern[day.key] = { '윤': [], '이': [] });
+            document.querySelectorAll('#rules-editor-content .rule-checkbox:checked').forEach(box => {
+                pattern[box.dataset.day][box.dataset.worker].push(box.dataset.type);
+            });
+            rulesDraft.patterns[editingRulePattern] = pattern;
+        }
+
+        function renderRuleEditor() {
+            const tabA = document.getElementById('rules-tab-a');
+            const tabB = document.getElementById('rules-tab-b');
+            [ ['A', tabA], ['B', tabB] ].forEach(([key, btn]) => {
+                btn.className = key === editingRulePattern
+                    ? 'flex-1 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white'
+                    : 'flex-1 py-2 rounded-lg text-sm font-bold bg-gray-100 text-gray-600';
+            });
+
+            const patterns = (rulesDraft && rulesDraft.patterns) || {};
+            const pattern = patterns[editingRulePattern] || {};
+            const container = document.getElementById('rules-editor-content');
+            container.innerHTML = '';
+
+            ruleDays.forEach(day => {
+                const dayRule = pattern[day.key] || {};
+                const card = document.createElement('div');
+                card.className = 'rounded-xl border border-gray-200 p-3';
+                const heading = document.createElement('div');
+                heading.className = 'font-bold text-sm text-gray-800 mb-2';
+                heading.innerText = day.label;
+                card.appendChild(heading);
+
+                ['윤', '이'].forEach(worker => {
+                    const line = document.createElement('div');
+                    line.className = 'flex flex-wrap items-center gap-2 mb-2 last:mb-0';
+                    const name = document.createElement('span');
+                    name.className = worker === '윤'
+                        ? 'w-8 text-xs font-bold text-amber-700'
+                        : 'w-8 text-xs font-bold text-pink-700';
+                    name.innerText = worker;
+                    line.appendChild(name);
+
+                    ruleTypes.forEach(type => {
+                        const label = document.createElement('label');
+                        label.className = 'inline-flex items-center gap-1 text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5';
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'rule-checkbox accent-indigo-600';
+                        checkbox.dataset.day = day.key;
+                        checkbox.dataset.worker = worker;
+                        checkbox.dataset.type = type;
+                        checkbox.checked = Array.isArray(dayRule[worker]) && dayRule[worker].includes(type);
+                        label.appendChild(checkbox);
+                        label.appendChild(document.createTextNode(type));
+                        line.appendChild(label);
+                    });
+                    card.appendChild(line);
+                });
+                container.appendChild(card);
+            });
+        }
+
+        window.clearCurrentRulePattern = function() {
+            document.querySelectorAll('#rules-editor-content .rule-checkbox').forEach(box => box.checked = false);
+            captureVisibleRulePattern();
+        };
+
+        window.saveRulesToCloud = async function() {
+            const baseDate = document.getElementById('rules-base-date').value;
+            if (!baseDate) {
+                showAlert('A 패턴 시작 기준일을 먼저 선택해주세요.');
+                return;
             }
+            if (!window.authReadyForRules) {
+                // Firebase 인증 상태는 아래 Firebase 모듈에서 설정합니다.
+            }
+
+            captureVisibleRulePattern();
+            const nextData = JSON.parse(JSON.stringify(window.cloudData || { holidays: {}, rules: {}, schedules: {} }));
+            nextData.rules = {
+                ...(nextData.rules || {}),
+                baseDate,
+                patterns: JSON.parse(JSON.stringify((rulesDraft && rulesDraft.patterns) || {}))
+            };
+
+            // A/B 두 패턴의 편집 내용을 함께 저장합니다.
+            await window.saveDataToCloud(nextData);
+            closeRulesModal();
         };
 
         window.openStatsModal = function() {
@@ -846,7 +989,6 @@ if (isToday) {
             const mBtn = document.getElementById('tab-monthly-btn');
             const yBtn = document.getElementById('tab-yearly-btn');
             if (!mBtn || !yBtn) return;
-
             if (currentStatsMode === 'monthly') {
                 mBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg bg-white text-gray-800 shadow-sm transition";
                 yBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg text-gray-500 hover:text-gray-800 transition";
@@ -861,27 +1003,14 @@ if (isToday) {
             if (!container) return;
             container.innerHTML = '';
 
-            let stats = {
-                '윤': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 },
-                '이': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 }
-            };
-            
-            // 날짜 수집용 배열
-            let yoonLeaveDates = [];
-            let leeLeaveDates = [];
-            let yoonRDates = [];
-            let leeRDates = [];
+            let stats = { '윤': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 }, '이': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 } };
+            let yoonLeaves = [], leeLeaves = [], yoonOffs = [], leeOffs = [], yoonRs = [], leeRs = [];
 
             if (currentStatsMode === 'monthly') {
                 const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
                 for (let d = 1; d <= totalDays; d++) {
                     let dateObj = new Date(currentYear, currentMonth, d);
-                    let yearStr = currentYear;
-                    let monthStr = String(currentMonth + 1).padStart(2, '0');
-                    let dayStr = String(d).padStart(2, '0');
-                    let dateKey = `${yearStr}-${monthStr}-${dayStr}`;
-
-                    let sched = (window.customSchedules && window.customSchedules[dateKey]) || getDefaultSchedule(dateObj);
+                    let sched = getFinalSchedule(dateObj);
 
                     ['윤', '이'].forEach(w => {
                         if (Array.isArray(sched[w])) {
@@ -889,40 +1018,28 @@ if (isToday) {
                                 if (stats[w][t] !== undefined) {
                                     stats[w][t]++;
                                     if (t === '연차') {
-                                        if (w === '윤') yoonLeaveDates.push(`${d}일`);
-                                        if (w === '이') leeLeaveDates.push(`${d}일`);
+                                        if (w === '윤') yoonLeaves.push(`${d}일`);
+                                        if (w === '이') leeLeaves.push(`${d}일`);
+                                    }
+                                    if (t === 'off') {
+                                        if (w === '윤') yoonOffs.push(`${d}일`);
+                                        if (w === '이') leeOffs.push(`${d}일`);
                                     }
                                 }
                             });
                         }
-                        // R 일정 확인 (요일별 혹은 커스텀)
-                        if (w === '윤' && (sched['윤'].includes('R') || sched['윤'].includes('off'))) {
-                            // 이미 R이 포함되어 있는지 확인 후 추가
-                        }
-                    });
-                    
-                    // R 날짜 수집 (기본 규칙 혹은 커스텀 R)
-                    ['윤', '이'].forEach(w => {
                         if (sched[w] && sched[w].includes('R')) {
-                            if (w === '윤') yoonRDates.push(`${d}일`);
-                            if (w === '이') leeRDates.push(`${d}일`);
+                            if (w === '윤') yoonRs.push(`${d}일`);
+                            if (w === '이') leeRs.push(`${d}일`);
                         }
                     });
                 }
-                container.appendChild(createCombinedStatCard(`${currentYear}년 ${currentMonth + 1}월 근무 통계`, stats, yoonLeaveDates, leeLeaveDates, yoonRDates, leeRDates, false));
+                container.appendChild(createCombinedStatCard(`${currentYear}년 ${currentMonth + 1}월 통계`, stats, yoonLeaves, leeLeaves, yoonOffs, leeOffs, yoonRs, leeRs, false));
             } else {
-                let startDate = new Date(currentYear, 0, 1);
+                let curr = new Date(currentYear, 0, 1);
                 let endDate = new Date(currentYear, 11, 31);
-
-                let curr = new Date(startDate);
                 while (curr <= endDate) {
-                    let yearStr = curr.getFullYear();
-                    let monthStr = String(curr.getMonth() + 1).padStart(2, '0');
-                    let dayNum = curr.getDate();
-                    let dayStr = String(dayNum).padStart(2, '0');
-                    let dateKey = `${yearStr}-${monthStr}-${dayStr}`;
-
-                    let sched = (window.customSchedules && window.customSchedules[dateKey]) || getDefaultSchedule(curr);
+                    let sched = getFinalSchedule(curr);
 
                     ['윤', '이'].forEach(w => {
                         if (Array.isArray(sched[w])) {
@@ -930,38 +1047,48 @@ if (isToday) {
                                 if (stats[w][t] !== undefined) {
                                     stats[w][t]++;
                                     if (t === '연차') {
-                                        if (w === '윤') yoonLeaveDates.push(`${curr.getMonth() + 1}.${dayNum}`);
-                                        if (w === '이') leeLeaveDates.push(`${curr.getMonth() + 1}.${dayNum}`);
+                                        if (w === '윤') yoonLeaves.push(`${curr.getMonth() + 1}.${curr.getDate()}`);
+                                        if (w === '이') leeLeaves.push(`${curr.getMonth() + 1}.${curr.getDate()}`);
                                     }
                                 }
                             });
                         }
                     });
-
                     curr.setDate(curr.getDate() + 1);
                 }
-                // 1년 통계에서는 R 날짜를 제외하고 전달함 (빈 배열 전달)
-                container.appendChild(createCombinedStatCard(`${currentYear}년 전체 1년 근무 통계`, stats, yoonLeaveDates, leeLeaveDates, [], [], true));
+                container.appendChild(createCombinedStatCard(`${currentYear}년 전체 1년 통계`, stats, yoonLeaves, leeLeaves, [], [], [], [], true));
             }
         }
 
-        function createCombinedStatCard(title, stats, yoonLeaves, leeLeaves, yoonRs, leeRs, isYearly) {
+        function createCombinedStatCard(title, stats, yoonLeaves, leeLeaves, yoonOffs, leeOffs, yoonRs, leeRs, isYearly) {
             const card = document.createElement('div');
             card.className = "bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3";
-            
             let yoonLeaveStr = yoonLeaves.length > 0 ? `${yoonLeaves.length}일 (${yoonLeaves.join(', ')})` : '0일';
             let leeLeaveStr = leeLeaves.length > 0 ? `${leeLeaves.length}일 (${leeLeaves.join(', ')})` : '0일';
-
             let yoonRStr = yoonRs.length > 0 ? `${yoonRs.length}일 (${yoonRs.join(', ')})` : '0일';
             let leeRStr = leeRs.length > 0 ? `${leeRs.length}일 (${leeRs.join(', ')})` : '0일';
 
-            let yoonExtraHtml = `<div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50"><span class="font-semibold text-purple-700">연차 사용일:</span> ${yoonLeaveStr}</div>`;
-            let leeExtraHtml = `<div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50"><span class="font-semibold text-purple-700">연차 사용일:</span> ${leeLeaveStr}</div>`;
+            let yoonExtraHtml = isYearly ? `
+                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50">
+                    <span class="font-semibold text-purple-700">연차:</span> ${yoonLeaveStr}
+                </div>
+            ` : `
+                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50 space-y-1">
+                    <div><span class="font-semibold text-emerald-600">R:</span> ${yoonRStr}</div>
+                    <div><span class="font-semibold text-purple-700">연차:</span> ${yoonLeaveStr}</div>
+                </div>
+            `;
 
-            if (!isYearly) {
-                yoonExtraHtml += `<div class="text-[11px] text-gray-600 pt-1"><span class="font-semibold text-emerald-700">R 일자:</span> ${yoonRStr}</div>`;
-                leeExtraHtml += `<div class="text-[11px] text-gray-600 pt-1"><span class="font-semibold text-emerald-700">R 일자:</span> ${leeRStr}</div>`;
-            }
+            let leeExtraHtml = isYearly ? `
+                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50">
+                    <span class="font-semibold text-purple-700">연차:</span> ${leeLeaveStr}
+                </div>
+            ` : `
+                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50 space-y-1">
+                    <div><span class="font-semibold text-emerald-600">R:</span> ${leeRStr}</div>
+                    <div><span class="font-semibold text-purple-700">연차:</span> ${leeLeaveStr}</div>
+                </div>
+            `;
 
             card.innerHTML = `
                 <h4 class="font-bold text-gray-800 text-sm mb-1">${title}</h4>
@@ -969,20 +1096,20 @@ if (isToday) {
                     <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
                         <div class="text-xs font-bold text-amber-700 mb-1">근무자: 윤</div>
                         <div class="grid grid-cols-4 gap-2 text-center">
-                            <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['윤']['반차'] || 0}</div></div>
-                            <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['윤']['off'] || 0}</div></div>
-                            <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['윤']['연차'] || 0}</div></div>
-                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-emerald-600">${stats['윤']['R'] || 0}</div></div>
+                            <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['윤']['반차']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['윤']['off']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['윤']['연차']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-emerald-600">${stats['윤']['R']}</div></div>
                         </div>
                         ${yoonExtraHtml}
                     </div>
                     <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
                         <div class="text-xs font-bold text-pink-700 mb-1">근무자: 이</div>
                         <div class="grid grid-cols-4 gap-2 text-center">
-                            <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['이']['반차'] || 0}</div></div>
-                            <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['이']['off'] || 0}</div></div>
-                            <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['이']['연차'] || 0}</div></div>
-                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-emerald-600">${stats['이']['R'] || 0}</div></div>
+                            <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['이']['반차']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['이']['off']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['이']['연차']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-emerald-600">${stats['이']['R']}</div></div>
                         </div>
                         ${leeExtraHtml}
                     </div>
@@ -1000,10 +1127,42 @@ if (isToday) {
             if (!alertBox) return;
             alertBox.innerText = msg;
             alertBox.classList.remove('hidden');
-            setTimeout(() => {
-                alertBox.classList.add('hidden');
-            }, 2500);
+            setTimeout(() => alertBox.classList.add('hidden'), 2500);
         }
+
+
+        // 휴대폰 달력 좌우 스와이프: 왼쪽으로 밀면 다음 달, 오른쪽으로 밀면 이전 달
+        (function enableCalendarSwipe() {
+            const calendar = document.getElementById('calendar-days');
+            if (!calendar) return;
+            let startX = 0;
+            let startY = 0;
+            let tracking = false;
+            calendar.addEventListener('touchstart', function (event) {
+                if (event.touches.length !== 1) { tracking = false; return; }
+                const target = event.target;
+                if (target.closest('button, input, select, textarea, a')) { tracking = false; return; }
+                startX = event.touches[0].clientX;
+                startY = event.touches[0].clientY;
+                tracking = true;
+            }, { passive: true });
+            calendar.addEventListener('touchend', function (event) {
+                if (!tracking || !event.changedTouches.length) return;
+                tracking = false;
+                // 열린 모달 안에서의 터치로는 달을 넘기지 않습니다.
+                const modalOpen = ['edit-modal', 'rules-modal', 'stats-modal'].some(id => {
+                    const el = document.getElementById(id);
+                    return el && !el.classList.contains('hidden');
+                });
+                if (modalOpen) return;
+                const dx = event.changedTouches[0].clientX - startX;
+                const dy = event.changedTouches[0].clientY - startY;
+                if (Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+                    window.changeMonth(dx < 0 ? 1 : -1);
+                }
+            }, { passive: true });
+            calendar.addEventListener('touchcancel', function () { tracking = false; }, { passive: true });
+        })();
     </script>
 </body>
 </html>
