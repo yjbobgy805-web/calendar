@@ -466,11 +466,17 @@
             } else {
                 displayText = `${workerName} ${type}`;
                 if (workerName === '이') {
-                    if (type === '반차') badge.classList.add('bg-pink-100', 'text-pink-900');
-                    else badge.classList.add('bg-pink-700', 'text-white');
+                    if (type === '반차') {
+                        badge.classList.add('bg-pink-100', 'text-pink-900');
+                    } else {
+                        // off, 연차, R 모두 이 off 색상과 동일하게 적용
+                        badge.classList.add('bg-pink-700', 'text-white');
+                    }
                 } else if (workerName === '윤') {
-                    if (type === '반차') badge.classList.add('bg-amber-100', 'text-amber-900');
-                    else {
+                    if (type === '반차') {
+                        badge.classList.add('bg-amber-100', 'text-amber-900');
+                    } else {
+                        // off, 연차, R 모두 윤 off 색상과 동일하게 적용
                         badge.style.backgroundColor = '#F79646';
                         badge.style.color = '#ffffff';
                     }
@@ -673,7 +679,7 @@
             const btnGroup = document.createElement('div');
             btnGroup.className = "worker-buttons-group flex flex-wrap gap-1.5";
 
-            ['반차', 'off', '연차'].forEach(opt => {
+            ['반차', 'off', '연차', 'R'].forEach(opt => {
                 const btn = document.createElement('button');
                 btn.type = "button";
                 btn.dataset.val = opt;
@@ -794,9 +800,13 @@
             if (!container) return;
             container.innerHTML = '';
 
-            let stats = { '윤': { '반차': 0, 'off': 0, '연차': 0 }, '이': { '반차': 0, 'off': 0, '연차': 0 } };
+            let stats = { 
+                '윤': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 }, 
+                '이': { '반차': 0, 'off': 0, '연차': 0, 'R': 0 } 
+            };
             let yoonLeaves = [], leeLeaves = [];
-            let albaStats = {}; // { '알바이름': { count: 0, dates: [] } }
+            let yoonRs = [], leeRs = [];
+            let albaStats = {};
 
             if (currentStatsMode === 'monthly') {
                 const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -812,25 +822,16 @@
                                     if (t === '연차') {
                                         if (w === '윤') yoonLeaves.push(`${d}일`);
                                         if (w === '이') leeLeaves.push(`${d}일`);
+                                    } else if (t === 'R') {
+                                        if (w === '윤') yoonRs.push(`${d}일`);
+                                        if (w === '이') leeRs.push(`${d}일`);
                                     }
                                 }
                             });
                         }
                     });
-
-                    if (sched['R'] && Array.isArray(sched['R'])) {
-                        sched['R'].forEach(a => {
-                            let aName = (a.name || '알바').trim();
-                            if (!aName) return;
-                            if (!albaStats[aName]) {
-                                albaStats[aName] = { count: 0, dates: [] };
-                            }
-                            albaStats[aName].count++;
-                            albaStats[aName].dates.push(`${d}일`);
-                        });
-                    }
                 }
-                container.appendChild(createCombinedStatCard(`${currentYear}년 ${currentMonth + 1}월 통계`, stats, yoonLeaves, leeLeaves, albaStats, false));
+                container.appendChild(createCombinedStatCard(`${currentYear}년 ${currentMonth + 1}월 통계`, stats, yoonLeaves, leeLeaves, yoonRs, leeRs, albaStats, false));
             } else {
                 let curr = new Date(currentYear, 0, 1);
                 let endDate = new Date(currentYear, 11, 31);
@@ -842,9 +843,13 @@
                             sched[w].forEach(t => {
                                 if (stats[w][t] !== undefined) {
                                     stats[w][t]++;
+                                    let dateStrFormat = `${curr.getMonth() + 1}.${curr.getDate()}`;
                                     if (t === '연차') {
-                                        if (w === '윤') yoonLeaves.push(`${curr.getMonth() + 1}.${curr.getDate()}`);
-                                        if (w === '이') leeLeaves.push(`${curr.getMonth() + 1}.${curr.getDate()}`);
+                                        if (w === '윤') yoonLeaves.push(dateStrFormat);
+                                        if (w === '이') leeLeaves.push(dateStrFormat);
+                                    } else if (t === 'R') {
+                                        if (w === '윤') yoonRs.push(dateStrFormat);
+                                        if (w === '이') leeRs.push(dateStrFormat);
                                     }
                                 }
                             });
@@ -864,56 +869,62 @@
                     }
                     curr.setDate(curr.getDate() + 1);
                 }
-                container.appendChild(createCombinedStatCard(`${currentYear}년 전체 1년 통계`, stats, yoonLeaves, leeLeaves, albaStats, true));
+                container.appendChild(createCombinedStatCard(`${currentYear}년 전체 1년 통계`, stats, yoonLeaves, leeLeaves, yoonRs, leeRs, albaStats, true));
             }
         }
 
-        function createCombinedStatCard(title, stats, yoonLeaves, leeLeaves, albaStats, isYearly) {
+        function createCombinedStatCard(title, stats, yoonLeaves, leeLeaves, yoonRs, leeRs, albaStats, isYearly) {
             const card = document.createElement('div');
             card.className = "bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3";
             let yoonLeaveStr = yoonLeaves.length > 0 ? `${yoonLeaves.length}일 (${yoonLeaves.join(', ')})` : '0일';
             let leeLeaveStr = leeLeaves.length > 0 ? `${leeLeaves.length}일 (${leeLeaves.join(', ')})` : '0일';
+            let yoonRStr = yoonRs.length > 0 ? `${yoonRs.length}일 (${yoonRs.join(', ')})` : '0일';
+            let leeRStr = leeRs.length > 0 ? `${leeRs.length}일 (${leeRs.join(', ')})` : '0일';
 
             let yoonExtraHtml = `
-                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50">
-                    <span class="font-semibold text-purple-700">연차:</span> ${yoonLeaveStr}
+                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50 space-y-1">
+                    <div><span class="font-semibold text-green-700">R:</span> ${yoonRStr}</div>
+                    <div><span class="font-semibold text-purple-700">연차:</span> ${yoonLeaveStr}</div>
                 </div>
             `;
 
             let leeExtraHtml = `
-                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50">
-                    <span class="font-semibold text-purple-700">연차:</span> ${leeLeaveStr}
+                <div class="text-[11px] text-gray-600 pt-1.5 border-t border-gray-50 space-y-1">
+                    <div><span class="font-semibold text-green-700">R:</span> ${leeRStr}</div>
+                    <div><span class="font-semibold text-purple-700">연차:</span> ${leeLeaveStr}</div>
                 </div>
             `;
 
-            let albaKeys = Object.keys(albaStats || {});
             let albaCardHtml = '';
-            if (albaKeys.length > 0) {
-                let albaItemsHtml = albaKeys.map(name => {
-                    let info = albaStats[name];
-                    let dateStr = info.dates.join(', ');
-                    return `
-                        <div class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-b-0 text-xs">
-                            <span class="font-bold text-indigo-900">👤 ${name}</span>
-                            <span class="text-gray-600"><strong class="text-indigo-600">${info.count}일</strong> <span class="text-[10px] text-gray-400">(${dateStr})</span></span>
+            if (isYearly) {
+                let albaKeys = Object.keys(albaStats || {});
+                if (albaKeys.length > 0) {
+                    let albaItemsHtml = albaKeys.map(name => {
+                        let info = albaStats[name];
+                        let dateStr = info.dates.join(', ');
+                        return `
+                            <div class="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-b-0 text-xs">
+                                <span class="font-bold text-indigo-900">👤 ${name}</span>
+                                <span class="text-gray-600"><strong class="text-indigo-600">${info.count}일</strong> <span class="text-[10px] text-gray-400">(${dateStr})</span></span>
+                            </div>
+                        `;
+                    }).join('');
+
+                    albaCardHtml = `
+                        <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
+                            <div class="text-xs font-bold text-indigo-700 mb-1">🤝 알바 근무 현황</div>
+                            <div class="space-y-1">
+                                ${albaItemsHtml}
+                            </div>
                         </div>
                     `;
-                }).join('');
-
-                albaCardHtml = `
-                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
-                        <div class="text-xs font-bold text-indigo-700 mb-1">🤝 알바 근무 현황</div>
-                        <div class="space-y-1">
-                            ${albaItemsHtml}
+                } else {
+                    albaCardHtml = `
+                        <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 text-center text-xs text-gray-400 py-2">
+                            등록된 알바 근무 기록이 없습니다.
                         </div>
-                    </div>
-                `;
-            } else {
-                albaCardHtml = `
-                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 text-center text-xs text-gray-400 py-2">
-                        등록된 알바 근무 기록이 없습니다.
-                    </div>
-                `;
+                    `;
+                }
             }
 
             card.innerHTML = `
@@ -921,19 +932,21 @@
                 <div class="space-y-2">
                     <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
                         <div class="text-xs font-bold text-amber-700 mb-1">근무자: 윤</div>
-                        <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="grid grid-cols-4 gap-1 text-center">
                             <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['윤']['반차']}</div></div>
                             <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['윤']['off']}</div></div>
                             <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['윤']['연차']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-green-600">${stats['윤']['R']}</div></div>
                         </div>
                         ${yoonExtraHtml}
                     </div>
                     <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 space-y-2">
                         <div class="text-xs font-bold text-pink-700 mb-1">근무자: 이</div>
-                        <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="grid grid-cols-4 gap-1 text-center">
                             <div><div class="text-[10px] text-gray-400">반차</div><div class="text-xs font-bold text-amber-600">${stats['이']['반차']}</div></div>
                             <div><div class="text-[10px] text-gray-400">off</div><div class="text-xs font-bold text-rose-600">${stats['이']['off']}</div></div>
                             <div><div class="text-[10px] text-gray-400">연차</div><div class="text-xs font-bold text-purple-600">${stats['이']['연차']}</div></div>
+                            <div><div class="text-[10px] text-gray-400">R</div><div class="text-xs font-bold text-green-600">${stats['이']['R']}</div></div>
                         </div>
                         ${leeExtraHtml}
                     </div>
